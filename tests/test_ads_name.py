@@ -60,14 +60,46 @@ class TestADSName(TestCase):
         self.assertEqual(aname, namesA[0])
         for name in namesA[1:]:
             self.assertNotEqual(name, aname)
+    
+    def test_detail_equality(self):
+        for i, name1 in enumerate(namesA):
+            name1_lt = ADSName("<" + name1)
+            name1_gt = ADSName(">" + name1)
+            self.assertEqual(name1_lt, name1_lt)
+            self.assertEqual(name1_gt, name1_gt)
+            self.assertEqual(name1_lt, name1_gt)
+            self.assertEqual(name1_gt, name1_lt)
             
+            for j, name2 in enumerate(namesA):
+                name2 = ADSName(name2)
+                if i > j:
+                    self.assertEqual(name1_lt, name2)
+                    self.assertEqual(name2, name1_lt)
+                    self.assertNotEqual(name1_gt, name2)
+                    self.assertNotEqual(name2, name1_gt)
+                elif i < j:
+                    self.assertNotEqual(name1_lt, name2)
+                    self.assertNotEqual(name2, name1_lt)
+                    self.assertEqual(name1_gt, name2)
+                    self.assertEqual(name2, name1_gt)
+                else:
+                    self.assertEqual(name1_lt, name2)
+                    self.assertEqual(name2, name1_lt)
+                    self.assertEqual(name1_gt, name2)
+                    self.assertEqual(name2, name1_gt)
     
     def test_repr(self):
         for name in namesA:
             self.assertEqual(name, repr(ADSName(name)))
         
-        name = "=" + name
-        self.assertEqual(name, repr(ADSName(name)))
+        name_ = "=" + name
+        self.assertEqual(name_, repr(ADSName(name_)))
+        
+        name_ = ">" + name
+        self.assertEqual(name_, repr(ADSName(name_)))
+        
+        name_ = "<" + name
+        self.assertEqual(name_, repr(ADSName(name_)))
     
     def test_creation(self):
         self.assertEqual(

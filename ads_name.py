@@ -26,6 +26,8 @@ class ADSName:
     middle_name: str = None
     middle_initial: str = None
     exact: bool = False
+    exclude_less_specific: bool = False
+    exclude_more_specific: bool = False
     
     def __init__(self, last_name, first_name=None, middle_name=None):
         if type(last_name) == ADSName:
@@ -58,9 +60,16 @@ class ADSName:
             if middle_name is not None:
                 self.set_middle_name_or_initial(middle_name)
         
-        if self.last_name.startswith("=") and len(self.last_name) > 1:
-            self.exact = True
-            self.last_name = self.last_name[1:]
+        if len(self.last_name) > 1:
+            if self.last_name.startswith("="):
+                self.exact = True
+                self.last_name = self.last_name[1:]
+            elif self.last_name.startswith("<"):
+                self.exclude_more_specific = True
+                self.last_name = self.last_name[1:]
+            elif self.last_name.startswith(">"):
+                self.exclude_less_specific = True
+                self.last_name = self.last_name[1:]
     
     def set_first_name_or_initial(self, first_name):
         if (len(first_name) == 1 or
@@ -97,6 +106,14 @@ class ADSName:
                 self.middle_initial == other.middle_initial and
                 self.middle_name == other.middle_name
             )
+        
+        if ((self.exclude_more_specific or other.exclude_less_specific)
+                and self.level_of_detail < other.level_of_detail):
+            return False
+        
+        if ((self.exclude_less_specific or other.exclude_more_specific)
+                and self.level_of_detail > other.level_of_detail):
+            return False
         
         return (
                 self.last_name == other.last_name
@@ -138,28 +155,34 @@ class ADSName:
         self.middle_name = src.middle_name
         self.middle_initial = src.middle_initial
         self.exact = src.exact
+        self.exclude_more_specific = src.exclude_more_specific
+        self.exclude_less_specific = src.exclude_less_specific
     
     @property
     def full_name(self):
-        str = self.last_name
+        output = self.last_name
     
         if self.first_name is not None:
-            str += f", {self.first_name}"
+            output += f", {self.first_name}"
         if self.first_initial is not None:
-            str += f", {self.first_initial}."
+            output += f", {self.first_initial}."
     
         if self.middle_name is not None:
-            str += f" {self.middle_name}"
+            output += f" {self.middle_name}"
         if self.middle_initial is not None:
-            str += f" {self.middle_initial}."
+            output += f" {self.middle_initial}."
             
-        return str
+        return output
     
     def __str__(self):
-        str = self.full_name
+        output = self.full_name
+        if self.exclude_less_specific:
+            output = '>' + output
+        if self.exclude_more_specific:
+            output = '<' + output
         if self.exact:
-            str = '=' + str
-        return str
+            output = '=' + output
+        return output
     
     def __repr__(self):
         return self.__str__()
