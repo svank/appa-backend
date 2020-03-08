@@ -19,14 +19,16 @@ class Repository:
             author = ADSName(author)
         author_record = self.cache_buddy.load_author_data(author)
         if author_record is None:
-            author_record = self.ads_buddy.get_papers_for_author(author)
-            if type(author_record) == AuthorRecord:
-                self.cache_buddy.cache_author_data(author_record)
-            else:
-                for record_author in author_record:
-                    self.cache_buddy.cache_author_data(
-                        author_record[record_author])
-                author_record = author_record[author]
+            author_record = self.try_generating_author_record(author)
+            if author_record is None:
+                author_record = self.ads_buddy.get_papers_for_author(author)
+                if type(author_record) == AuthorRecord:
+                    self.cache_buddy.cache_author_data(author_record)
+                else:
+                    for record_author in author_record:
+                        self.cache_buddy.cache_author_data(
+                            author_record[record_author])
+                    author_record = author_record[author]
         lb.on_author_queried()
         lb.on_doc_loaded(len(author_record.documents))
         return author_record
@@ -41,4 +43,29 @@ class Repository:
     def notify_of_upcoming_author_request(self, *authors):
         for author in authors:
             if not self.cache_buddy.author_is_in_cache(author):
-                self.ads_buddy.notify_of_upcoming_author_request(author)
+                self.ads_buddy.add_author_to_prefetch_queue(author)
+    
+    def try_generating_author_record(self, author: ADSName):
+        if not (author.exact
+                or author.exclude_more_specific
+                or author.exclude_less_specific):
+            return None
+        
+        author_record = self.cache_buddy.load_author_data(author.full_name)
+        if author_record is None:
+            return None
+        
+        selected_documents = []
+        
+        for doc in author_record.documents:
+            for coauthor in doc.authors:
+                if coauthor == author:
+                    selected_documents.append(doc)
+                    break
+
+        new_author_record = AuthorRecord(name=author,
+                                         documents=selected_documents)
+        self.cache_buddy.cache_author_data(new_author_record)
+        
+        lb.i(f"Author record for {str(author)} constructed from cache")
+        return new_author_record
