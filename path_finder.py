@@ -1,11 +1,11 @@
-from typing import Set
 import time
+from typing import Set
 
-from name_aware import NameAwareDict, NameAwareSet
-from repository import Repository
-from ads_name import ADSName
 from LogBuddy import lb
+from ads_name import ADSName
+from name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
+from repository import Repository
 
 
 class PathFinder:
@@ -73,7 +73,7 @@ class PathFinder:
                             node = PathNode(name=coauthor)
                             self.nodes[coauthor] = node
                             node.set_dist(expand_node_dist + 1, self.expanding_from_src)
-                            node.links(self.expanding_from_src).add(expand_node)
+                            node.neighbors(self.expanding_from_src).add(expand_node)
                             authors_next.append(coauthor)
                             self.repository.notify_of_upcoming_author_request(coauthor)
                         
@@ -92,11 +92,13 @@ class PathFinder:
                                 # chains of equal length connecting it to the
                                 # src or dest
                                 node.set_dist(expand_node_dist + 1, self.expanding_from_src)
-                                node.links(self.expanding_from_src).add(expand_node)
+                                node.neighbors(self.expanding_from_src).add(expand_node)
                                 # lb.d(f"   Added viable step")
                             if self.node_connects(node):
                                 self.connecting_nodes.add(node)
                                 lb.d(f"   Connecting author found!")
+                        links = node.links(self.expanding_from_src)[expand_node]
+                        links.add(document.bibcode)
             lb.d("All expansions complete")
             if len(self.connecting_nodes) > 0:
                 lb.i(f"{len(self.connecting_nodes)} connections found!")
@@ -116,13 +118,12 @@ class PathFinder:
                     self.authors_to_expand_dest_next = []
                 self.expanding_from_src = not self.expanding_from_src
                 lb.d(f"Expanding from {'src' if self.expanding_from_src else 'dest'} side")
-        # self.prune_graph()
         self.produce_final_graph()
         lb.i(f"Finished path finding in {time.time() - start_time:.2f} s")
     
-    def node_connects(self, node):
-        if (len(node.links_toward_src) > 0
-                and len(node.links_toward_dest) > 0):
+    def node_connects(self, node: PathNode):
+        if (len(node.neighbors_toward_src) > 0
+                and len(node.neighbors_toward_dest) > 0):
             return True
         if self.expanding_from_src and node is self.dest:
             return True
@@ -138,34 +139,44 @@ class PathFinder:
             if node.name in visited:
                 continue
             visited.add(node.name)
-            for neighbor in node.links_toward_src:
+            for neighbor in node.neighbors_toward_src:
                 if neighbor.name not in visited:
                     nodes_to_walk.append(neighbor)
-                neighbor.links_toward_dest.add(node)
+                neighbor.neighbors_toward_dest.add(node)
                 neighbor.dist_from_dest = min(node.dist_from_dest + 1,
                                               neighbor.dist_from_dest)
-            for neighbor in node.links_toward_dest:
+                neighbor.links_toward_dest[node] = \
+                    node.links_toward_src[neighbor]
+            for neighbor in node.neighbors_toward_dest:
                 if neighbor.name not in visited:
                     nodes_to_walk.append(neighbor)
-                neighbor.links_toward_src.add(node)
+                neighbor.neighbors_toward_src.add(node)
                 neighbor.dist_from_src = min(node.dist_from_src + 1,
                                              neighbor.dist_from_src)
+                neighbor.links_toward_src[node] = \
+                    node.links_toward_dest[neighbor]
         
         # Step two: Remove any links that aren't along the most direct route
         nodes_to_walk = [self.src]
         while len(nodes_to_walk):
             node = nodes_to_walk.pop()
-            for neighbor in list(node.links_toward_dest):
+            for neighbor in list(node.neighbors_toward_dest):
                 if neighbor.dist_from_src != node.dist_from_src + 1:
-                    node.links_toward_dest.remove(neighbor)
-                    neighbor.links_toward_src.remove(node)
+                    node.neighbors_toward_dest.remove(neighbor)
+                    node.links_toward_dest.pop(neighbor)
+                    
+                    neighbor.neighbors_toward_src.remove(node)
+                    neighbor.links_toward_src.pop(node)
                 else:
                     nodes_to_walk.append(neighbor)
             
-            for neighbor in list(node.links_toward_src):
+            for neighbor in list(node.neighbors_toward_src):
                 if neighbor.dist_from_dest != node.dist_from_dest + 1:
-                    node.links_toward_src.remove(neighbor)
-                    neighbor.links_toward_dest.remove(node)
+                    node.neighbors_toward_src.remove(neighbor)
+                    node.links_toward_src.pop(neighbor)
+                    
+                    neighbor.neighbors_toward_dest.remove(node)
+                    neighbor.links_toward_dest.pop(node)
 
     @property
     def authors_to_expand(self):

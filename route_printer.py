@@ -22,12 +22,12 @@ class RoutePrinter:
     def _construct_rows(self, parent_node, depth, width, separator, fmat):
         first = True
         output = ""
-        for node in parent_node.links_toward_dest:
+        for node in parent_node.neighbors_toward_dest:
             if not first:
-                output += '\n' + (" " * width + separator) * (depth)
+                output += '\n' + (" " * width + separator) * depth
             first = False
             output += fmat.format(str(node.name))
-            if len(node.links_toward_dest):
+            if len(node.neighbors_toward_dest):
                 output += separator
                 output += self._construct_rows(node, depth+1, width, separator, fmat)
         return output

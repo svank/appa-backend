@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import sys
+from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Set
+from typing import Set, DefaultDict
 
 from ads_name import ADSName
 
@@ -12,8 +14,12 @@ class PathNode:
     name: ADSName
     dist_from_src: int = sys.maxsize
     dist_from_dest: int = sys.maxsize
-    links_toward_src: Set[PathNode] = field(default_factory=set)
-    links_toward_dest: Set[PathNode] = field(default_factory=set)
+    neighbors_toward_src: Set[PathNode] = field(default_factory=set)
+    neighbors_toward_dest: Set[PathNode] = field(default_factory=set)
+    links_toward_src: DefaultDict[PathNode, Set[str]] = field(
+        default_factory=lambda: defaultdict(set))
+    links_toward_dest: DefaultDict[PathNode, Set[str]] = field(
+        default_factory=lambda: defaultdict(set))
     
     def dist(self, from_src: bool):
         return self.dist_from_src if from_src else self.dist_from_dest
@@ -23,6 +29,9 @@ class PathNode:
             self.dist_from_src = dist
         else:
             self.dist_from_dest = dist
+    
+    def neighbors(self, from_src: bool):
+        return self.neighbors_toward_src if from_src else self.neighbors_toward_dest
     
     def links(self, from_src: bool):
         return self.links_toward_src if from_src else self.links_toward_dest
@@ -34,10 +43,10 @@ class PathNode:
         return f"Node({self.name})"
     
     def __repr__(self):
-        src_links = ', '.join([str(n) for n in self.links_toward_src])
-        dest_links = ', '.join([str(n) for n in self.links_toward_dest])
+        src_neighbors = ', '.join([str(n) for n in self.neighbors_toward_src])
+        dest_neighbors = ', '.join([str(n) for n in self.neighbors_toward_dest])
         return (f"Node(name={self.name}, "
                 f"dist_from_src={self.dist_from_src}, "
                 f"dist_from_dest={self.dist_from_dest}, "
-                f"links_toward_src=[{src_links}], "
-                f"links_toward_dest=[{dest_links}], ")
+                f"neighbors_toward_src=[{src_neighbors}], "
+                f"neighbors_toward_dest=[{dest_neighbors}], ")
