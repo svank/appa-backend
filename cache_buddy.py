@@ -39,11 +39,12 @@ def cache_author_data(author_record: AuthorRecord):
     
     author_record = author_record.copy()
     author_record.documents = [d.bibcode for d in author_record.documents]
-    author_record.name = str(author_record.name)
+    cache_key = str(author_record.name)
+    author_record.name = author_record.name.original_name
     
     backing_cache.store_author_data(
         json.dumps(author_record.asdict(), check_circular=False),
-        author_record.name
+        cache_key
     )
 
 

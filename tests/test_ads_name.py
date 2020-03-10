@@ -2,7 +2,6 @@ from unittest import TestCase
 
 from ads_name import ADSName
 
-
 namesA = [
     "murray",
     "murray, s.",
@@ -119,3 +118,18 @@ class TestADSName(TestCase):
         
         with self.assertRaises(ValueError):
             ADSName("murray", middle_name="s")
+    
+    def test_original_name(self):
+        for n in namesA:
+            name = ADSName(n)
+            self.assertEqual(name.original_name, n)
+            
+            name = ADSName(n.upper())
+            self.assertEqual(name.original_name, n.upper())
+            self.assertNotEqual(name.original_name, n)
+            self.assertEqual(name.full_name, n)
+            
+            for modifier in ['=', '<', '>']:
+                name = ADSName(modifier + n)
+                self.assertEqual(name.original_name, modifier + n)
+                self.assertEqual(name.bare_original_name, n)

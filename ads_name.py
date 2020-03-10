@@ -28,6 +28,7 @@ class ADSName:
     exact: bool = False
     exclude_less_specific: bool = False
     exclude_more_specific: bool = False
+    original_name: str
     
     def __init__(self, last_name, first_name=None, middle_name=None):
         if type(last_name) == ADSName:
@@ -40,6 +41,7 @@ class ADSName:
                 raise ValueError(
                     "Cannot provide middle name without first name")
             # A complete name has been passed as a single string.
+            self.original_name = last_name
             # Let's break it into components
             parts = last_name.split(",", maxsplit=1)
             self.last_name = parts[0].lower()
@@ -55,6 +57,9 @@ class ADSName:
                     middle = given_parts[1]
                     self._set_middle_name_or_initial(middle)
         else:
+            self.original_name = f"{last_name}, {first_name}"
+            if middle_name is not None:
+                self.original_name += f" {middle_name}"
             self.last_name = last_name.lower()
             self._set_first_name_or_initial(first_name)
             if middle_name is not None:
@@ -154,9 +159,16 @@ class ADSName:
         self.first_initial = src.first_initial
         self.middle_name = src.middle_name
         self.middle_initial = src.middle_initial
+        self.original_name = src.original_name
         self.exact = src.exact
         self.exclude_more_specific = src.exclude_more_specific
         self.exclude_less_specific = src.exclude_less_specific
+    
+    @property
+    def bare_original_name(self):
+        if self.original_name[0] in ('=', '<', '>'):
+            return self.original_name[1:]
+        return self.original_name
     
     @property
     def full_name(self):
