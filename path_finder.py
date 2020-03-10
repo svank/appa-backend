@@ -47,8 +47,12 @@ class PathFinder:
         self.expanding_from_src = True
         
         while True:
-            authors = self.authors_to_expand_src if self.expanding_from_src else self.authors_to_expand_dest
-            authors_next = self.authors_to_expand_src_next if self.expanding_from_src else self.authors_to_expand_dest_next
+            authors = (self.authors_to_expand_src
+                       if self.expanding_from_src
+                       else self.authors_to_expand_dest)
+            authors_next = (self.authors_to_expand_src_next
+                            if self.expanding_from_src
+                            else self.authors_to_expand_dest_next)
             for expand_author in authors:
                 lb.d(f"Expanding author {expand_author}")
                 expand_node = self.nodes[expand_author]

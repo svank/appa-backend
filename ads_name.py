@@ -31,7 +31,7 @@ class ADSName:
     
     def __init__(self, last_name, first_name=None, middle_name=None):
         if type(last_name) == ADSName:
-            self.__copy_from(last_name)
+            self._copy_from(last_name)
             return
         elif type(last_name) != str:
             raise TypeError("Invalid type for name: " + str(type(last_name)))
@@ -48,17 +48,17 @@ class ADSName:
             if len(parts) > 1 and len(parts[1]) > 0:
                 given_parts = parts[1].split(maxsplit=1)
                 first = given_parts[0]
-                self.set_first_name_or_initial(first)
+                self._set_first_name_or_initial(first)
                 
                 # Check whether we have a middle name
                 if len(given_parts) > 1:
                     middle = given_parts[1]
-                    self.set_middle_name_or_initial(middle)
+                    self._set_middle_name_or_initial(middle)
         else:
             self.last_name = last_name.lower()
-            self.set_first_name_or_initial(first_name)
+            self._set_first_name_or_initial(first_name)
             if middle_name is not None:
-                self.set_middle_name_or_initial(middle_name)
+                self._set_middle_name_or_initial(middle_name)
         
         if len(self.last_name) > 1:
             if self.last_name.startswith("="):
@@ -71,24 +71,24 @@ class ADSName:
                 self.exclude_less_specific = True
                 self.last_name = self.last_name[1:]
     
-    def set_first_name_or_initial(self, first_name):
+    def _set_first_name_or_initial(self, first_name):
         if (len(first_name) == 1 or
                 (len(first_name) == 2 and first_name[-1] == '.')):
             self.first_initial = first_name[0].lower()
         else:
             self.first_name = first_name.lower()
     
-    def set_middle_name_or_initial(self, middle_name):
+    def _set_middle_name_or_initial(self, middle_name):
         if (len(middle_name) == 1 or
                 (len(middle_name) == 2 and middle_name[-1] == '.')):
             self.middle_initial = middle_name[0].lower()
         else:
             self.middle_name = middle_name.lower()
     
-    def get_first_name_data(self):
+    def _get_first_name_data(self):
         return self.first_name, self.first_initial
     
-    def get_middle_name_data(self):
+    def _get_middle_name_data(self):
         return self.middle_name, self.middle_initial
     
     def __eq__(self, other):
@@ -118,18 +118,18 @@ class ADSName:
         return (
                 self.last_name == other.last_name
                 and
-                ADSName.__name_data_are_equal(
-                    self.get_first_name_data(),
-                    other.get_first_name_data())
+                ADSName._name_data_are_equal(
+                    self._get_first_name_data(),
+                    other._get_first_name_data())
                 and
-                ADSName.__name_data_are_equal(
-                    self.get_middle_name_data(),
-                    other.get_middle_name_data()
+                ADSName._name_data_are_equal(
+                    self._get_middle_name_data(),
+                    other._get_middle_name_data()
                 )
         )
     
     @classmethod
-    def __name_data_are_equal(cls, nd1, nd2):
+    def _name_data_are_equal(cls, nd1, nd2):
         """Accepts and compares two (name, initial) tuples"""
         # If either is empty...
         if nd1 == (None, None) or nd2 == (None, None):
@@ -148,7 +148,7 @@ class ADSName:
         initial = nd1[1] if nd1[1] is not None else nd2[1]
         return name.startswith(initial)
     
-    def __copy_from(self, src: ADSName):
+    def _copy_from(self, src: ADSName):
         self.last_name = src.last_name
         self.first_name = src.first_name
         self.first_initial = src.first_initial

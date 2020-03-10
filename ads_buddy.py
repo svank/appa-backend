@@ -1,12 +1,11 @@
 import time
 from collections import deque
 
-from ads_access import ads
-
-from document_record import DocumentRecord
-from author_record import AuthorRecord
 from LogBuddy import lb
+from ads_access import ads
 from ads_name import ADSName
+from author_record import AuthorRecord
+from document_record import DocumentRecord
 from name_aware import NameAwareDict
 
 FIELDS = ['bibcode', 'title', 'author', 'aff', 'doi', 'doctype',
@@ -27,7 +26,7 @@ class ADS_Buddy:
         lb.i("Querying ADS for bibcode " + bibcode)
         t_start = time.time()
         q = ads.SearchQuery(bibcode=bibcode, fl=FIELDS)
-        rec = self.article_to_record(q[0])
+        rec = self._article_to_record(q[0])
         t_stop = time.time()
         lb.on_network_complete(t_stop - t_start)
         return rec
@@ -36,7 +35,7 @@ class ADS_Buddy:
         if type(query_author) == str:
             query_author = ADSName(query_author)
         
-        authors = self.select_authors_to_prefetch()
+        authors = self._select_authors_to_prefetch()
         if query_author not in authors:
             authors.append(query_author)
         
@@ -58,7 +57,7 @@ class ADS_Buddy:
         
         q = ads.SearchQuery(q=query, fl=FIELDS,
                             doctype="article", database="astronomy", rows=2000)
-        documents = self.articles_to_records(q)
+        documents = self._articles_to_records(q)
         
         t_stop = time.time()
         lb.on_network_complete(t_stop - t_start)
@@ -76,10 +75,10 @@ class ADS_Buddy:
         else:
             return author_records
     
-    def articles_to_records(self, articles):
-        return [self.article_to_record(art) for art in articles]
+    def _articles_to_records(self, articles):
+        return [self._article_to_record(art) for art in articles]
     
-    def article_to_record(self, article):
+    def _article_to_record(self, article):
         return DocumentRecord(
             bibcode=article.bibcode,
             title=article.title[0],
@@ -100,7 +99,7 @@ class ADS_Buddy:
         self.prefetch_set.add(author)
         self.prefetch_queue.append(author)
     
-    def select_authors_to_prefetch(self):
+    def _select_authors_to_prefetch(self):
         lb.d(f"{len(self.prefetch_queue)} authors in prefetch queue")
         n_prefetches = MAXIMUM_RESPONSE_SIZE // ESTIMATED_PAPERS_PER_AUTHOR - 1
         if n_prefetches > len(self.prefetch_queue):

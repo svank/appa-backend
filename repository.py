@@ -18,7 +18,7 @@ class Repository:
             author = ADSName(author)
         author_record = cache_buddy.load_author_data(author)
         if author_record is None:
-            author_record = self.try_generating_author_record(author)
+            author_record = self._try_generating_author_record(author)
             if author_record is None:
                 author_record = self.ads_buddy.get_papers_for_author(author)
                 if type(author_record) == AuthorRecord:
@@ -44,7 +44,11 @@ class Repository:
             if not cache_buddy.author_is_in_cache(author):
                 self.ads_buddy.add_author_to_prefetch_queue(author)
     
-    def try_generating_author_record(self, author: ADSName):
+    def _try_generating_author_record(self, author: ADSName):
+        """Generate a requested record from existing cache data
+        
+        E.g. If "=Doe, J." is searched for and "Doe, J." is already cached,
+        we can generate the requested record without going to ADS."""
         if not (author.exact
                 or author.exclude_more_specific
                 or author.exclude_less_specific):
