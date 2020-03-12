@@ -81,7 +81,7 @@ class ADS_Buddy:
     def _article_to_record(self, article):
         return DocumentRecord(
             bibcode=article.bibcode,
-            title=article.title[0],
+            title=article.title[0] if article.title is not None else "[No title given]",
             authors=article.author,
             affils=article.aff,
             doi=article.doi[0] if article.doi is not None else None,

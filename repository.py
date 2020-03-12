@@ -41,7 +41,10 @@ class Repository:
     
     def notify_of_upcoming_author_request(self, *authors):
         for author in authors:
-            if not cache_buddy.author_is_in_cache(author):
+            if type(author) == str:
+                author = ADSName(author)
+            if (not cache_buddy.author_is_in_cache(author)
+                    and not self._can_generate_author_request(author)):
                 self.ads_buddy.add_author_to_prefetch_queue(author)
     
     def _try_generating_author_record(self, author: ADSName):
@@ -49,16 +52,12 @@ class Repository:
         
         E.g. If "=Doe, J." is searched for and "Doe, J." is already cached,
         we can generate the requested record without going to ADS."""
-        if not (author.exact
-                or author.exclude_more_specific
-                or author.exclude_less_specific):
-            return None
         
-        author_record = cache_buddy.load_author_data(author.full_name)
-        if author_record is None:
+        if not self._can_generate_author_request(author):
             return None
         
         selected_documents = []
+        author_record = cache_buddy.load_author_data(author.full_name)
         
         for doc in author_record.documents:
             for coauthor in doc.authors:
@@ -72,3 +71,14 @@ class Repository:
         
         lb.i(f"Author record for {str(author)} constructed from cache")
         return new_author_record
+    
+    def _can_generate_author_request(self, author: ADSName):
+        if not (author.exact
+                or author.exclude_more_specific
+                or author.exclude_less_specific):
+            return False
+    
+        author_record = cache_buddy.load_author_data(author.full_name)
+        if author_record is None:
+            return False
+        return True
