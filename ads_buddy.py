@@ -32,8 +32,7 @@ class ADS_Buddy:
         return rec
     
     def get_papers_for_author(self, query_author):
-        if type(query_author) == str:
-            query_author = ADSName(query_author)
+        query_author = ADSName.parse(query_author)
         
         authors = self._select_authors_to_prefetch()
         if query_author not in authors:
@@ -110,5 +109,5 @@ class ADS_Buddy:
         for _ in range(n_prefetches):
             name = self.prefetch_queue.popleft()
             self.prefetch_set.remove(name)
-            prefetches.append(ADSName(name))
+            prefetches.append(ADSName.parse(name))
         return prefetches

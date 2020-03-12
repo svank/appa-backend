@@ -1,8 +1,8 @@
 import dataclasses
 from typing import List
 
-from document_record import DocumentRecord
 from ads_name import ADSName
+from document_record import DocumentRecord
 
 
 @dataclasses.dataclass()
@@ -11,7 +11,7 @@ class AuthorRecord:
     documents: List[DocumentRecord]
     
     def __post_init__(self):
-        self.name = ADSName(self.name)
+        self.name = ADSName.parse(self.name)
     
     def copy(self):
         return AuthorRecord(name=self.name, documents=self.documents)

@@ -14,8 +14,7 @@ class Repository:
     ads_buddy = ADS_Buddy()
     
     def get_author_record(self, author: Name) -> AuthorRecord:
-        if type(author) == str:
-            author = ADSName(author)
+        author = ADSName.parse(author)
         author_record = cache_buddy.load_author_data(author)
         if author_record is None:
             author_record = self._try_generating_author_record(author)
@@ -41,8 +40,7 @@ class Repository:
     
     def notify_of_upcoming_author_request(self, *authors):
         for author in authors:
-            if type(author) == str:
-                author = ADSName(author)
+            author = ADSName.parse(author)
             if (not cache_buddy.author_is_in_cache(author)
                     and not self._can_generate_author_request(author)):
                 self.ads_buddy.add_author_to_prefetch_queue(author)

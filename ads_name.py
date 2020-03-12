@@ -2,8 +2,14 @@ from __future__ import annotations
 
 
 class ADSName:
-    """Handles names
-
+    """Implements a singleton representation of names with appropriate equality
+    
+    Instances should be created through ADSName.parse(name_data). See below.
+    
+    All operations are case insensitive. The original input data, with case,
+    (from the first time an instance is loaded---see below) is preserved in
+    the original_name attribute.
+    
     Authors can be listed in different ways. E.g.:
         Lastname, First middle
         Lastname, First M.
@@ -19,32 +25,56 @@ class ADSName:
 
     See "Author Searches" under
     https://adsabs.github.io/help/search/search-syntax
+    
+    There is meant to be only one instance of ADSName for each input name
+    string. This allows equality checking to be optimized. This parameterized
+    singleton nature is implemented through the ADSName.parse() method,
+    which should be used to create ADSName instances.
     """
-    last_name: str
-    first_name: str = None
-    first_initial: str = None
-    middle_name: str = None
-    middle_initial: str = None
-    exact: bool = False
-    exclude_less_specific: bool = False
-    exclude_more_specific: bool = False
-    original_name: str
+    _last_name: str
+    _first_name: str = None
+    _first_initial: str = None
+    _middle_name: str = None
+    _middle_initial: str = None
+    
+    _exact: bool = False
+    _exclude_less_specific: bool = False
+    _exclude_more_specific: bool = False
+    
+    _original_name: str
+    _full_name: str
+    _qualified_full_name: str
+    
+    _equality_cache: {}
+    _name_cache = {}
+    
+    @classmethod
+    def parse(cls, last_name, first_name=None, middle_name=None):
+        if type(last_name) == ADSName:
+            return last_name
+        key = (last_name, first_name, middle_name)
+        if key not in cls._name_cache:
+            instance = ADSName(last_name, first_name, middle_name)
+            cls._name_cache[key] = instance
+            return instance
+        return cls._name_cache[key]
     
     def __init__(self, last_name, first_name=None, middle_name=None):
-        if type(last_name) == ADSName:
-            self._copy_from(last_name)
-            return
-        elif type(last_name) != str:
+        """Do not call this method directly. Instead, use ADSName.parse()."""
+        if type(last_name) != str:
             raise TypeError("Invalid type for name: " + str(type(last_name)))
+        
+        self._equality_cache = {}
+        
         if first_name is None:
             if middle_name is not None:
                 raise ValueError(
                     "Cannot provide middle name without first name")
             # A complete name has been passed as a single string.
-            self.original_name = last_name
+            self._original_name = last_name
             # Let's break it into components
             parts = last_name.split(",", maxsplit=1)
-            self.last_name = parts[0].lower()
+            self._last_name = parts[0].lower()
             
             # Check whether we only have a last name
             if len(parts) > 1 and len(parts[1]) > 0:
@@ -57,81 +87,95 @@ class ADSName:
                     middle = given_parts[1]
                     self._set_middle_name_or_initial(middle)
         else:
-            self.original_name = f"{last_name}, {first_name}"
+            self._original_name = f"{last_name}, {first_name}"
             if middle_name is not None:
-                self.original_name += f" {middle_name}"
-            self.last_name = last_name.lower()
+                self._original_name += f" {middle_name}"
+            self._last_name = last_name.lower()
             self._set_first_name_or_initial(first_name)
             if middle_name is not None:
                 self._set_middle_name_or_initial(middle_name)
         
-        if len(self.last_name) > 1:
-            if self.last_name.startswith("="):
-                self.exact = True
-                self.last_name = self.last_name[1:]
-            elif self.last_name.startswith("<"):
-                self.exclude_more_specific = True
-                self.last_name = self.last_name[1:]
-            elif self.last_name.startswith(">"):
-                self.exclude_less_specific = True
-                self.last_name = self.last_name[1:]
+        if len(self._last_name) > 1:
+            if self._last_name.startswith("="):
+                self._exact = True
+                self._last_name = self._last_name[1:]
+            elif self._last_name.startswith("<"):
+                self._exclude_more_specific = True
+                self._last_name = self._last_name[1:]
+            elif self._last_name.startswith(">"):
+                self._exclude_less_specific = True
+                self._last_name = self._last_name[1:]
+        
+        # This value is used in equality checking (a very frequent operation),
+        # so it is memoized for speed
+        self._qualified_full_name = self._original_name.lower()
     
     def _set_first_name_or_initial(self, first_name):
         if (len(first_name) == 1 or
                 (len(first_name) == 2 and first_name[-1] == '.')):
-            self.first_initial = first_name[0].lower()
+            self._first_initial = first_name[0].lower()
         else:
-            self.first_name = first_name.lower()
+            self._first_name = first_name.lower()
     
     def _set_middle_name_or_initial(self, middle_name):
         if (len(middle_name) == 1 or
                 (len(middle_name) == 2 and middle_name[-1] == '.')):
-            self.middle_initial = middle_name[0].lower()
+            self._middle_initial = middle_name[0].lower()
         else:
-            self.middle_name = middle_name.lower()
-    
-    def _get_first_name_data(self):
-        return self.first_name, self.first_initial
-    
-    def _get_middle_name_data(self):
-        return self.middle_name, self.middle_initial
+            self._middle_name = middle_name.lower()
     
     def __eq__(self, other):
-        """Checks equality by my understanding of ADS's name-matching rules"""
-        if type(other) is str:
-            other = ADSName(other)
-        if type(other) != ADSName:
-            return False
+        """Checks equality by my understanding of ADS's name-matching rules.
         
-        if self.exact or other.exact:
-            return (
-                self.last_name == other.last_name and
-                self.first_initial == other.first_initial and
-                self.first_name == other.first_name and
-                self.middle_initial == other.middle_initial and
-                self.middle_name == other.middle_name
+        A layer of caching is implemented."""
+        if type(other) is str:
+            other = ADSName.parse(other)
+        elif type(other) is not ADSName:
+            return NotImplemented
+        
+        if self is other:
+            return True
+        
+        try:
+            return self._equality_cache[other._qualified_full_name]
+        except KeyError:
+            pass
+
+        if self._exact or other._exact:
+            equal = (
+                self._last_name == other._last_name and
+                self._first_initial == other._first_initial and
+                self._first_name == other._first_name and
+                self._middle_initial == other._middle_initial and
+                self._middle_name == other._middle_name
             )
         
-        if ((self.exclude_more_specific or other.exclude_less_specific)
+        elif ((self._exclude_more_specific or other._exclude_less_specific)
                 and self.level_of_detail < other.level_of_detail):
-            return False
+            equal = False
         
-        if ((self.exclude_less_specific or other.exclude_more_specific)
+        elif ((self._exclude_less_specific or other._exclude_more_specific)
                 and self.level_of_detail > other.level_of_detail):
-            return False
+            equal = False
         
-        return (
-                self.last_name == other.last_name
+        else:
+            equal = (
+                self._last_name == other._last_name
                 and
                 ADSName._name_data_are_equal(
-                    self._get_first_name_data(),
-                    other._get_first_name_data())
-                and
-                ADSName._name_data_are_equal(
-                    self._get_middle_name_data(),
-                    other._get_middle_name_data()
+                    (self._first_name, self._first_initial),
+                    (other._first_name, other._first_initial)
                 )
-        )
+                and
+                ADSName._name_data_are_equal(
+                    (self._middle_name, self._middle_initial),
+                    (other._middle_name, other._middle_initial)
+                )
+            )
+        
+        self._equality_cache[other._qualified_full_name] = equal
+        other._equality_cache[self._qualified_full_name] = equal
+        return equal
     
     @classmethod
     def _name_data_are_equal(cls, nd1, nd2):
@@ -154,47 +198,18 @@ class ADSName:
         return name.startswith(initial)
     
     def _copy_from(self, src: ADSName):
-        self.last_name = src.last_name
-        self.first_name = src.first_name
-        self.first_initial = src.first_initial
-        self.middle_name = src.middle_name
-        self.middle_initial = src.middle_initial
-        self.original_name = src.original_name
-        self.exact = src.exact
-        self.exclude_more_specific = src.exclude_more_specific
-        self.exclude_less_specific = src.exclude_less_specific
-    
-    @property
-    def bare_original_name(self):
-        if self.original_name[0] in ('=', '<', '>'):
-            return self.original_name[1:]
-        return self.original_name
-    
-    @property
-    def full_name(self):
-        output = self.last_name
-    
-        if self.first_name is not None:
-            output += f", {self.first_name}"
-        if self.first_initial is not None:
-            output += f", {self.first_initial}."
-    
-        if self.middle_name is not None:
-            output += f" {self.middle_name}"
-        if self.middle_initial is not None:
-            output += f" {self.middle_initial}."
-            
-        return output
+        self._last_name = src._last_name
+        self._first_name = src._first_name
+        self._first_initial = src._first_initial
+        self._middle_name = src._middle_name
+        self._middle_initial = src._middle_initial
+        self._original_name = src._original_name
+        self._exact = src._exact
+        self._exclude_more_specific = src._exclude_more_specific
+        self._exclude_less_specific = src._exclude_less_specific
     
     def __str__(self):
-        output = self.full_name
-        if self.exclude_less_specific:
-            output = '>' + output
-        if self.exclude_more_specific:
-            output = '<' + output
-        if self.exact:
-            output = '=' + output
-        return output
+        return self.qualified_full_name
     
     def __repr__(self):
         return self.__str__()
@@ -205,11 +220,11 @@ class ADSName:
     @property
     def level_of_detail(self):
         return (
-            (100 if self.last_name is not None else 0)
-            + (20 if self.first_name is not None else 0)
-            + (10 if self.first_initial is not None else 0)
-            + (2 if self.middle_name is not None else 0)
-            + (1 if self.middle_initial is not None else 0)
+            (100 if self._last_name is not None else 0)
+            + (20 if self._first_name is not None else 0)
+            + (10 if self._first_initial is not None else 0)
+            + (2 if self._middle_name is not None else 0)
+            + (1 if self._middle_initial is not None else 0)
         )
     
     def __add__(self, other):
@@ -217,3 +232,57 @@ class ADSName:
     
     def __radd__(self, other):
         return other + str(self)
+    
+    @property
+    def last_name(self):
+        return self._last_name
+    
+    @property
+    def first_name(self):
+        return self._first_name
+    
+    @property
+    def first_initial(self):
+        return self._first_initial
+    
+    @property
+    def middle_name(self):
+        return self._middle_name
+    
+    @property
+    def middle_initial(self):
+        return self._middle_initial
+    
+    @property
+    def exact(self):
+        return self._exact
+    
+    @property
+    def exclude_less_specific(self):
+        return self._exclude_less_specific
+    
+    @property
+    def exclude_more_specific(self):
+        return self._exclude_more_specific
+    
+    @property
+    def original_name(self):
+        return self._original_name
+
+    @property
+    def bare_original_name(self):
+        if self._original_name[0] in ('=', '<', '>'):
+            return self._original_name[1:]
+        return self._original_name
+
+    @property
+    def full_name(self):
+        output = self._qualified_full_name
+        if output[0] in ('=', '<', '>'):
+            return output[1:]
+        return output
+        
+    
+    @property
+    def qualified_full_name(self):
+        return self._qualified_full_name

@@ -18,14 +18,12 @@ class PathFinder:
     connecting_nodes: Set[PathNode]
     
     def __init__(self, src, dest, excluded_names=None):
-        if type(src) == str:
-            src = ADSName(src)
-        if type(dest) == str:
-            dest = ADSName(dest)
+        src = ADSName.parse(src)
+        dest = ADSName.parse(dest)
         self.excluded_names = NameAwareSet()
         if excluded_names is not None:
             for name in excluded_names:
-                self.excluded_names.add(ADSName(name))
+                self.excluded_names.add(ADSName.parse(name))
         
         self.repository.notify_of_upcoming_author_request(src, dest)
         self.expanding_from_src = True
@@ -62,7 +60,7 @@ class PathFinder:
                     lb.d(f" Found document {document.title:35.35}...")
                     for coauthor in document.authors:
                         # lb.d(f"  Checking coauthor {coauthor}")
-                        coauthor = ADSName(coauthor)
+                        coauthor = ADSName.parse(coauthor)
                         
                         if coauthor in self.excluded_names:
                             # lb.d("   Author is excluded")

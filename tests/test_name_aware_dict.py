@@ -1,13 +1,12 @@
 from unittest import TestCase
 
-from name_aware import NameAwareDict, PathNode
 from ads_name import ADSName
+from name_aware import NameAwareDict, PathNode
 
-
-equal_names = [ADSName(n) for n in ("Murray, Stephen",
+equal_names = [ADSName.parse(n) for n in ("Murray, Stephen",
                                     "Murray, S.",
                                     "Murray, Stephen S")]
-diff_names  = [ADSName(n) for n in ("Murray, Eva",
+diff_names  = [ADSName.parse(n) for n in ("Murray, Eva",
                                     "Burray, Eva")]
 
 

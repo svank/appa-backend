@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from typing import Dict, List, Union, Generic, TypeVar
 
 from ads_name import ADSName
@@ -16,8 +17,8 @@ class NameAwareDict(Generic[HasName]):
         self.items_by_last_name = dict()
     
     def __getitem__(self, key: Name) -> HasName:
-        if type(key) == str:
-            key = ADSName(key)
+        if type(key) is str:
+            key = ADSName.parse(key)
         items = self.items_by_last_name[key.last_name]
         for item in items:
             if item.name == key:
@@ -25,8 +26,8 @@ class NameAwareDict(Generic[HasName]):
         raise KeyError(key)
     
     def __setitem__(self, key: Name, value: HasName):
-        if type(key) == str:
-            key = ADSName(key)
+        if type(key) is str:
+            key = ADSName.parse(key)
         if key.last_name not in self.items_by_last_name:
             self.items_by_last_name[key.last_name] = []
         items = self.items_by_last_name[key.last_name]
@@ -52,8 +53,8 @@ class NameAwareDict(Generic[HasName]):
         return count
     
     def __contains__(self, key: Name):
-        if type(key) == str:
-            key = ADSName(key)
+        if type(key) is str:
+            key = ADSName.parse(key)
         if key.last_name not in self.items_by_last_name:
             return False
         items = self.items_by_last_name[key.last_name]
@@ -76,8 +77,8 @@ class NameAwareDict(Generic[HasName]):
 
 class NameAwareSet(NameAwareDict):
     def add(self, item: Name):
-        if type(item) == str:
-            item = ADSName(item)
+        if type(item) is str:
+            item = ADSName.parse(item)
         super(NameAwareSet, self).__setitem__(item, PathNode(name=item))
     
     def __setitem__(self, key, value):
