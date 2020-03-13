@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Dict, List, Union, Generic, TypeVar
 
 from ads_name import ADSName
@@ -14,7 +15,7 @@ class NameAwareDict(Generic[HasName]):
     items_by_last_name: Dict[str, List[HasName]]
     
     def __init__(self):
-        self.items_by_last_name = dict()
+        self.items_by_last_name = defaultdict(list)
     
     def __getitem__(self, key: Name) -> HasName:
         if type(key) is str:
@@ -28,8 +29,6 @@ class NameAwareDict(Generic[HasName]):
     def __setitem__(self, key: Name, value: HasName):
         if type(key) is str:
             key = ADSName.parse(key)
-        if key.last_name not in self.items_by_last_name:
-            self.items_by_last_name[key.last_name] = []
         items = self.items_by_last_name[key.last_name]
         for i, item in enumerate(items):
             if item.name == key:
@@ -55,9 +54,9 @@ class NameAwareDict(Generic[HasName]):
     def __contains__(self, key: Name):
         if type(key) is str:
             key = ADSName.parse(key)
-        if key.last_name not in self.items_by_last_name:
-            return False
+        
         items = self.items_by_last_name[key.last_name]
+        
         for item in items:
             if item.name == key:
                 return True
