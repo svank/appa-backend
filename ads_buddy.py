@@ -1,5 +1,6 @@
 import time
 from collections import deque
+from html import unescape
 
 from LogBuddy import lb
 from ads_access import ads
@@ -80,13 +81,17 @@ class ADS_Buddy:
     def _article_to_record(self, article):
         return DocumentRecord(
             bibcode=article.bibcode,
-            title=article.title[0] if article.title is not None else "[No title given]",
-            authors=article.author,
-            affils=article.aff,
+            title=(unescape(article.title[0])
+                   if article.title is not None
+                   else "[No title given]"),
+            authors=[unescape(a) for a in article.author],
+            affils=unescape(article.aff),
             doi=article.doi[0] if article.doi is not None else None,
             doctype=article.doctype,
-            keywords=article.keyword,
-            publication=article.pub,
+            keywords=([unescape(k) for k in article.keyword]
+                      if article.keyword is not None
+                      else []),
+            publication=unescape(article.pub),
             pubdate=article.date,
             citation_count=article.citation_count,
             read_count=article.read_count
