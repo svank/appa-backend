@@ -1,9 +1,9 @@
 import json
 
 import cache_fs as backing_cache
-from LogBuddy import lb
 from author_record import AuthorRecord
 from document_record import DocumentRecord
+from log_buddy import lb
 
 
 def cache_document_data(document_record: DocumentRecord):

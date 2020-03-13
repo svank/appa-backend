@@ -1,4 +1,4 @@
-from LogBuddy import lb
+from log_buddy import lb
 from path_finder import PathFinder
 from route_printer import RoutePrinter
 

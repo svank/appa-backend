@@ -1,12 +1,12 @@
 from typing import Union
 
 import cache_buddy
-from LogBuddy import lb
 from ads_buddy import ADS_Buddy
 from ads_name import ADSName
 from author_record import AuthorRecord
 from cache_buddy import CacheMiss
 from document_record import DocumentRecord
+from log_buddy import lb
 
 Name = Union[str, ADSName]
 

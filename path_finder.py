@@ -1,8 +1,8 @@
 import time
 from typing import Set
 
-from LogBuddy import lb
 from ads_name import ADSName
+from log_buddy import lb
 from name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
 from repository import Repository

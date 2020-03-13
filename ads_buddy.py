@@ -4,11 +4,11 @@ from html import unescape
 
 import requests
 
-from LogBuddy import lb
 from ads_access import ADS_TOKEN
 from ads_name import ADSName
 from author_record import AuthorRecord
 from document_record import DocumentRecord
+from log_buddy import lb
 from name_aware import NameAwareDict
 
 FIELDS = ['bibcode', 'title', 'author', 'aff', 'doi', 'doctype',
