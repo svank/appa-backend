@@ -2,26 +2,29 @@ import logging
 from statistics import median
 
 
+# noinspection PyUnresolvedReferences
 class LogBuddy:
     from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
     
-    n_docs_loaded = 0
-    
-    n_authors_queried = 0
-    n_network_queries = 0
-    
-    n_coauthors_considered = 0
-    
-    time_waiting_network = None
-    
     def __init__(self):
-        self.time_waiting_network = []
+        self.reset_stats()
         self.logger = logging.getLogger("LogBuddy")
         handler = logging.StreamHandler()
         formatter = logging.Formatter(
             '%(asctime)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
+    
+    def reset_stats(self):
+        self.n_docs_loaded = 0
+        
+        self.n_authors_queried = 0
+        self.n_network_queries = 0
+        
+        self.n_coauthors_considered = 0
+        
+        self.time_waiting_network = []
+        
     
     def d(self, msg, **kwargs):
         self.logger.debug(msg, **kwargs)
