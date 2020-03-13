@@ -29,8 +29,8 @@ class PathFinder:
         self.expanding_from_src = True
         self.authors_to_expand_src = [src]
         self.authors_to_expand_src_next = []
-        self.authors_to_expand_dest = [dest]
-        self.authors_to_expand_dest_next = []
+        self.authors_to_expand_dest = []
+        self.authors_to_expand_dest_next = [dest]
         
         self.nodes = NameAwareDict()
         self.src = PathNode(name=src, dist_from_src=0)
@@ -104,17 +104,23 @@ class PathFinder:
                 break
             else:
                 lb.d("Beginning new iteration")
-                if self.expanding_from_src:
-                    if len(self.authors_to_expand_src_next) == 0:
-                        raise RuntimeError("No authors found to expand!")
+                lb.d(f"{len(self.authors_to_expand_src_next)} authors on src side")
+                lb.d(f"{len(self.authors_to_expand_dest_next)} authors on dest side")
+                if (len(self.authors_to_expand_src_next) == 0
+                        and len(self.authors_to_expand_dest_next) == 0):
+                    raise RuntimeError("No authors found to expand!")
+                # Of the two lists of authors we could expand, let's always
+                # choose the shortest. This tends to get us to a solution
+                # faster.
+                if (len(self.authors_to_expand_src_next)
+                        < len(self.authors_to_expand_dest_next)):
                     self.authors_to_expand_src = self.authors_to_expand_src_next
                     self.authors_to_expand_src_next = []
+                    self.expanding_from_src = True
                 else:
-                    if len(self.authors_to_expand_dest_next) == 0:
-                        raise RuntimeError("No authors found to expand!")
                     self.authors_to_expand_dest = self.authors_to_expand_dest_next
                     self.authors_to_expand_dest_next = []
-                self.expanding_from_src = not self.expanding_from_src
+                    self.expanding_from_src = False
                 lb.d(f"Expanding from {'src' if self.expanding_from_src else 'dest'} side")
         self.produce_final_graph()
         lb.i(f"Finished path finding in {time.time() - start_time:.2f} s")
