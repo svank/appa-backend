@@ -17,14 +17,9 @@ def document_is_in_cache(bibcode):
     return backing_cache.document_is_in_cache(bibcode)
 
 
-def load_document_data(bibcode, except_on_miss=False):
+def load_document_data(bibcode):
     raw_data = backing_cache.load_document_data(bibcode)
-    if raw_data is None:
-        lb.i("Doc cache miss for " + bibcode)
-        if except_on_miss:
-            raise ValueError
-        else:
-            return None
+    
     try:
         data = json.loads(raw_data)
         return DocumentRecord(**data)
@@ -54,9 +49,7 @@ def author_is_in_cache(name):
 
 def load_author_data(name):
     raw_data = backing_cache.load_author_data(str(name))
-    if raw_data is None:
-        lb.i("Author cache miss for " + name)
-        return None
+    
     try:
         data = json.loads(raw_data)
         author_record = AuthorRecord(**data)
@@ -64,11 +57,12 @@ def load_author_data(name):
         lb.e("Error decoding author cache JSON data " + name)
         return None
     
-    try:
-        author_record.documents = [load_document_data(d)
-                                   for d in author_record.documents]
-    except ValueError:
-        lb.e("Cache miss in loading author's documents")
-        return None
+    author_record.documents = [load_document_data(d)
+                               for d in author_record.documents]
     
     return author_record
+
+
+class CacheMiss(Exception):
+    def __init__(self, key):
+        lb.i("Cache miss for " + key)

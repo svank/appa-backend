@@ -5,6 +5,7 @@ from LogBuddy import lb
 from ads_buddy import ADS_Buddy
 from ads_name import ADSName
 from author_record import AuthorRecord
+from cache_buddy import CacheMiss
 from document_record import DocumentRecord
 
 Name = Union[str, ADSName]
@@ -15,8 +16,9 @@ class Repository:
     
     def get_author_record(self, author: Name) -> AuthorRecord:
         author = ADSName.parse(author)
-        author_record = cache_buddy.load_author_data(author)
-        if author_record is None:
+        try:
+            author_record = cache_buddy.load_author_data(author)
+        except CacheMiss:
             author_record = self._try_generating_author_record(author)
             if author_record is None:
                 author_record = self.ads_buddy.get_papers_for_author(author)
@@ -32,8 +34,9 @@ class Repository:
         return author_record
     
     def get_document(self, bibcode) -> DocumentRecord:
-        document_record = cache_buddy.load_document_data(bibcode)
-        if document_record is None:
+        try:
+            document_record = cache_buddy.load_document_data(bibcode)
+        except CacheMiss:
             document_record = self.ads_buddy.get_document(bibcode)
             cache_buddy.cache_document_data(document_record)
         return document_record
@@ -55,7 +58,10 @@ class Repository:
             return None
         
         selected_documents = []
-        author_record = cache_buddy.load_author_data(author.full_name)
+        try:
+            author_record = cache_buddy.load_author_data(author.full_name)
+        except CacheMiss:
+            return None
         
         for doc in author_record.documents:
             for coauthor in doc.authors:
@@ -75,8 +81,5 @@ class Repository:
                 or author.exclude_more_specific
                 or author.exclude_less_specific):
             return False
-    
-        author_record = cache_buddy.load_author_data(author.full_name)
-        if author_record is None:
-            return False
-        return True
+        
+        return cache_buddy.author_is_in_cache(author.full_name)
