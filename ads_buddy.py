@@ -154,3 +154,18 @@ class ADS_Buddy:
             self.prefetch_set.remove(name)
             prefetches.append(ADSName.parse(name))
         return prefetches
+
+
+def is_bibcode(value):
+    return (
+        len(value) == 19
+        and _is_int(value[0:4])
+    )
+
+
+def _is_int(value):
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False

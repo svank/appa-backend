@@ -1,6 +1,7 @@
 import time
 from typing import Set
 
+from ads_buddy import is_bibcode
 from ads_name import ADSName
 from log_buddy import lb
 from name_aware import NameAwareDict, NameAwareSet
@@ -13,7 +14,8 @@ class PathFinder:
     nodes: NameAwareDict
     src: PathNode
     dest: PathNode
-    excluded_names = NameAwareSet
+    excluded_names: NameAwareSet
+    excluded_bibcodes: set
     expanding_from_src: bool
     connecting_nodes: Set[PathNode]
     
@@ -21,9 +23,14 @@ class PathFinder:
         src = ADSName.parse(src)
         dest = ADSName.parse(dest)
         self.excluded_names = NameAwareSet()
+        self.excluded_bibcodes = set()
         if excluded_names is not None:
             for name in excluded_names:
-                self.excluded_names.add(ADSName.parse(name))
+                name = name.strip()
+                if is_bibcode(name):
+                    self.excluded_bibcodes.add(name)
+                else:
+                    self.excluded_names.add(ADSName.parse(name))
         
         self.repository.notify_of_upcoming_author_request(src, dest)
         self.expanding_from_src = True
@@ -57,6 +64,9 @@ class PathFinder:
                 expand_node_dist = expand_node.dist(self.expanding_from_src)
                 record = self.repository.get_author_record(expand_author)
                 for document in record.documents:
+                    if document.bibcode in self.excluded_bibcodes:
+                        lb.d(" Excluded document {document.title:35.35}")
+                        continue
                     lb.d(f" Found document {document.title:35.35}...")
                     for coauthor in document.authors:
                         # lb.d(f"  Checking coauthor {coauthor}")
