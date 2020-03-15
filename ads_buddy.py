@@ -11,7 +11,7 @@ from document_record import DocumentRecord
 from log_buddy import lb
 from name_aware import NameAwareDict
 
-FIELDS = ['bibcode', 'title', 'author', 'aff', 'doi', 'doctype',
+FIELDS = ['bibcode', 'title', 'author', 'aff', 'doctype',
           'keyword', 'pub', 'date', 'citation_count', 'read_count']
 
 # These params control how many authors from the prefetch queue are included
@@ -118,7 +118,6 @@ class ADS_Buddy:
                    else "[No title given]"),
             authors=[unescape(a) for a in article["author"]],
             affils=[unescape(a) for a in article["aff"]],
-            doi=article["doi"][0] if "doi" in article else None,
             doctype=article["doctype"],
             keywords=([unescape(k) for k in article["keyword"]]
                       if "keyword" in article

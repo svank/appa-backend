@@ -8,7 +8,6 @@ class DocumentRecord:
     title: str
     authors: List[str]
     affils: List[str]
-    doi: str
     doctype: str
     keywords: List[str]
     publication: str
