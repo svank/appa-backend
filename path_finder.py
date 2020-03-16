@@ -1,4 +1,3 @@
-import time
 from typing import Set
 
 from ads_buddy import is_bibcode
@@ -48,7 +47,7 @@ class PathFinder:
         self.connecting_nodes = set()
     
     def find_path(self):
-        start_time = time.time()
+        lb.on_start_path_finding()
         self.expanding_from_src = True
         
         while True:
@@ -133,7 +132,7 @@ class PathFinder:
                     self.expanding_from_src = False
                 lb.d(f"Expanding from {'src' if self.expanding_from_src else 'dest'} side")
         self.produce_final_graph()
-        lb.i(f"Finished path finding in {time.time() - start_time:.2f} s")
+        lb.on_stop_path_finding()
     
     def node_connects(self, node: PathNode):
         if (len(node.neighbors_toward_src) > 0

@@ -21,9 +21,10 @@ def find_route():
     pf = PathFinder(source, dest, exclude)
     pf.find_path()
     
-    lb.reset_stats()
+    data = to_json(pf, lb)
     
-    return to_json(pf)
+    lb.reset_stats()
+    return data
 
 
 @app.after_request

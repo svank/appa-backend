@@ -1,4 +1,5 @@
 import logging
+import time
 from statistics import median
 
 
@@ -24,6 +25,8 @@ class LogBuddy:
         self.n_coauthors_considered = 0
         
         self.time_waiting_network = []
+        self.start_time = None
+        self.stop_time = None
         
     
     def d(self, msg, **kwargs):
@@ -57,6 +60,15 @@ class LogBuddy:
         self.n_network_queries += 1
         self.time_waiting_network.append(time)
     
+    def on_start_path_finding(self):
+        self.start_time = time.time()
+    
+    def on_stop_path_finding(self):
+        self.stop_time = time.time()
+    
+    def get_search_time(self):
+        return self.stop_time - self.start_time
+    
     def log_stats(self):
         self.i(f"{self.n_docs_loaded} docs and {self.n_authors_queried} authors queried")
         self.i(f"{self.n_coauthors_considered} coauthor names seen")
@@ -70,6 +82,7 @@ class LogBuddy:
             self.i(f"{self.n_network_queries} network queries in "
                    "min/med/max/tot "
                    f"{minimum:.2f}/{med:.2f}/{maximum:.2f}/{total:.2f} s")
+        self.i(f"Search took {self.get_search_time():.2f} s")
 
 
 logging.captureWarnings(True)
