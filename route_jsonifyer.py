@@ -6,6 +6,7 @@ from ads_name import ADSName
 from log_buddy import LogBuddy
 from path_finder import PathFinder
 from path_node import PathNode
+from repository import Repository
 
 
 def to_json(path_finder: PathFinder, log_buddy: LogBuddy):
@@ -35,6 +36,13 @@ def to_json(path_finder: PathFinder, log_buddy: LogBuddy):
     pairings = defaultdict(dict)
     _store_bibcodes_for_node(path_finder.src, pairings)
     output['bibcode_pairings'] = pairings
+    
+    # Special case for when the source and dest authors are the same
+    if len(output['author_graph']['neighbors_toward_dest']) == 0:
+        name = output['author_graph']['name']
+        auth_record = Repository().get_author_record(path_finder.src.name.original_name)
+        output['bibcode_pairings'][name][name] = [
+            doc.bibcode for doc in auth_record.documents]
     
     doc_data = {}
     _insert_document_data(pairings, doc_data)
