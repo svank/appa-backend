@@ -2,10 +2,16 @@ import logging
 import time
 from statistics import median
 
+import cache_buddy
+from progress_record import ProgressRecord
+
 
 # noinspection PyUnresolvedReferences
 class LogBuddy:
     from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
+    
+    progress_key: str
+    last_cache_update: float
     
     def __init__(self):
         self.reset_stats()
@@ -15,6 +21,9 @@ class LogBuddy:
             '%(asctime)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
         self.logger.addHandler(handler)
+    
+    def set_progress_key(self, key):
+        self.progress_key = key
     
     def reset_stats(self):
         self.n_docs_loaded = 0
@@ -28,6 +37,8 @@ class LogBuddy:
         self.start_time = None
         self.stop_time = None
         
+        self.progress_key = None
+        self.last_cache_update = 0
     
     def d(self, msg, **kwargs):
         self.logger.debug(msg, **kwargs)
@@ -48,20 +59,25 @@ class LogBuddy:
         self.logger.setLevel(level)
     
     def on_doc_loaded(self, n=1):
+        self.update_progress_cache()
         self.n_docs_loaded += n
     
     def on_author_queried(self, n=1):
+        self.update_progress_cache()
         self.n_authors_queried += n
     
     def on_coauthor_considered(self, n=1):
+        self.update_progress_cache()
         self.n_coauthors_considered += n
     
     def on_network_complete(self, time):
+        self.update_progress_cache()
         self.n_network_queries += 1
         self.time_waiting_network.append(time)
     
     def on_start_path_finding(self):
         self.start_time = time.time()
+        self.update_progress_cache()
     
     def on_stop_path_finding(self):
         self.stop_time = time.time()
@@ -83,6 +99,18 @@ class LogBuddy:
                    "min/med/max/tot "
                    f"{minimum:.2f}/{med:.2f}/{maximum:.2f}/{total:.2f} s")
         self.i(f"Search took {self.get_search_time():.2f} s")
+    
+    def update_progress_cache(self):
+        now = time.time()
+        if (self.progress_key is not None
+                and now - self.last_cache_update > 0.5):
+            self.last_cache_update = now
+            cache_buddy.cache_progress_data(
+                ProgressRecord(n_ads_queries=self.n_network_queries,
+                               n_authors_queried=self.n_authors_queried,
+                               n_docs_loaded=self.n_docs_loaded),
+                self.progress_key
+            )
 
 
 logging.captureWarnings(True)

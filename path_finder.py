@@ -77,6 +77,7 @@ class PathFinder:
                         
                         if coauthor not in self.nodes:
                             # lb.d(f"   New author added to graph")
+                            lb.on_coauthor_considered()
                             node = PathNode(name=coauthor)
                             self.nodes[coauthor] = node
                             node.set_dist(expand_node_dist + 1, self.expanding_from_src)
@@ -109,7 +110,6 @@ class PathFinder:
             lb.d("All expansions complete")
             if len(self.connecting_nodes) > 0:
                 lb.i(f"{len(self.connecting_nodes)} connections found!")
-                lb.on_coauthor_considered(len(self.nodes))
                 break
             else:
                 lb.d("Beginning new iteration")

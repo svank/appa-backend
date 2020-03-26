@@ -1,9 +1,11 @@
 import json
 
 import cache_fs as backing_cache
+# Can't use `from log_buddy import lb` b/c it would be a circular import
+import log_buddy
 from author_record import AuthorRecord
 from document_record import DocumentRecord
-from log_buddy import lb
+from progress_record import ProgressRecord
 
 
 def cache_document_data(document_record: DocumentRecord):
@@ -24,7 +26,7 @@ def load_document_data(bibcode):
         data = json.loads(raw_data)
         return DocumentRecord(**data)
     except ValueError:
-        lb.e("Error decoding document cache JSON data " + bibcode)
+        log_buddy.lb.e("Error decoding document cache JSON data " + bibcode)
         return None
 
 
@@ -54,7 +56,7 @@ def load_author_data(name):
         data = json.loads(raw_data)
         author_record = AuthorRecord(**data)
     except ValueError:
-        lb.e("Error decoding author cache JSON data " + name)
+        log_buddy.lb.e("Error decoding author cache JSON data " + name)
         return None
     
     author_record.documents = [load_document_data(d)
@@ -63,6 +65,24 @@ def load_author_data(name):
     return author_record
 
 
+def cache_progress_data(progress_record: ProgressRecord, key: str):
+    backing_cache.store_progress_data(
+        json.dumps(progress_record.asdict(), check_circular=False),
+        key
+    )
+
+
+def load_progress_data(key):
+    raw_data = backing_cache.load_progress_data(key)
+    
+    try:
+        data = json.loads(raw_data)
+        return ProgressRecord(**data)
+    except ValueError:
+        log_buddy.lb.e("Error decoding progress cache JSON data " + key)
+        return None
+
+
 class CacheMiss(Exception):
     def __init__(self, key):
-        lb.i("Cache miss for " + key)
+        log_buddy.lb.i("Cache miss for " + key)
