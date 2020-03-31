@@ -1,5 +1,5 @@
 from log_buddy import lb
-from path_finder import PathFinder
+from path_finder import PathFinder, PathFinderError
 from route_printer import RoutePrinter
 
 if __name__ == "__main__":
@@ -8,7 +8,10 @@ if __name__ == "__main__":
     dest = "Rast, Mark"
     exclude = []
     pf = PathFinder(source, dest, exclude)
-    pf.find_path()
-    
-    lb.log_stats()
-    print(RoutePrinter(pf))
+    try:
+        pf.find_path()
+    except PathFinderError as e:
+        lb.e(e)
+    else:
+        lb.log_stats()
+        print(RoutePrinter(pf))

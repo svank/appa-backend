@@ -17,6 +17,7 @@ class PathFinder:
     excluded_bibcodes: set
     expanding_from_src: bool
     connecting_nodes: Set[PathNode]
+    n_iterations: int
     
     def __init__(self, src, dest, excluded_names=None):
         src = ADSName.parse(src)
@@ -48,6 +49,17 @@ class PathFinder:
     
     def find_path(self):
         lb.on_start_path_finding()
+        self.n_iterations = 0
+        
+        if len(self.repository.get_author_record(self.src.name).documents) == 0:
+            raise PathFinderError(
+                "src_empty",
+                "No documents found for " + self.src.name.original_name)
+        if len(self.repository.get_author_record(self.dest.name).documents) == 0:
+            raise PathFinderError(
+                "dest_empty",
+                "No documents found for " + self.dest.name.original_name)
+        
         self.expanding_from_src = True
         
         while True:
@@ -108,6 +120,7 @@ class PathFinder:
                         links = node.links(self.expanding_from_src)[expand_node]
                         links.add(document.bibcode)
             lb.d("All expansions complete")
+            self.n_iterations += 1
             if len(self.connecting_nodes) > 0:
                 lb.i(f"{len(self.connecting_nodes)} connections found!")
                 break
@@ -116,8 +129,10 @@ class PathFinder:
                 lb.d(f"{len(self.authors_to_expand_src_next)} authors on src side")
                 lb.d(f"{len(self.authors_to_expand_dest_next)} authors on dest side")
                 if (len(self.authors_to_expand_src_next) == 0
-                        and len(self.authors_to_expand_dest_next) == 0):
-                    raise RuntimeError("No authors found to expand!")
+                        or len(self.authors_to_expand_dest_next) == 0):
+                    raise PathFinderError(
+                        "no_authors_to_expand",
+                        f"No connections possible after {self.n_iterations} iterations")
                 # Of the two lists of authors we could expand, let's always
                 # choose the shortest. This tends to get us to a solution
                 # faster.
@@ -195,3 +210,9 @@ class PathFinder:
     def authors_to_expand(self):
         return self.authors_to_expand_src if self.expanding_from_src else \
             self.authors_to_expand_dest
+
+
+class PathFinderError(RuntimeError):
+    def __init__(self, key, message):
+        super().__init__(message)
+        self.key = key

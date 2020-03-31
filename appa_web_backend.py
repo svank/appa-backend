@@ -1,11 +1,12 @@
 import hashlib
 import json
+import traceback
 
 from flask import Flask, request
 
 import cache_buddy
 from log_buddy import lb
-from path_finder import PathFinder
+from path_finder import PathFinder, PathFinderError
 from route_jsonifyer import to_json
 
 app = Flask(__name__)
@@ -18,7 +19,23 @@ def find_route():
     lb.set_progress_key(make_progress_key(source, dest, exclude))
     
     pf = PathFinder(source, dest, exclude)
-    pf.find_path()
+    try:
+        pf.find_path()
+    except PathFinderError as e:
+        return json.dumps({
+            "error_key": e.key,
+            "error_msg": str(e),
+            "src": pf.src.name.original_name,
+            "dest": pf.dest.name.original_name
+        })
+    except:
+        lb.e("Uncaught exception: " + traceback.format_exc())
+        return json.dumps({
+            "error_key": "unknown",
+            "error_msg": "Unexpected server error",
+            "src": pf.src.name.original_name,
+            "dest": pf.dest.name.original_name
+        })
     
     data = to_json(pf, lb)
     
