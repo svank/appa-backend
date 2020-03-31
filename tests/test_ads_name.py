@@ -133,3 +133,16 @@ class TestADSName(TestCase):
                 name = ADSName.parse(modifier + n)
                 self.assertEqual(name.original_name, modifier + n)
                 self.assertEqual(name.bare_original_name, n)
+    
+    def test_full_name_formatting(self):
+        for n in namesA:
+            name1 = ADSName.parse(n)
+            name2 = ADSName.parse(n.replace(", ", ",").replace(".", ""))
+            self.assertEqual(str(name1), str(name2))
+            self.assertEqual(name1, name2)
+
+            for modifier in ['=', '<', '>']:
+                name1 = ADSName.parse(modifier + n)
+                name2 = ADSName.parse((modifier + n).replace(", ", ",").replace(".", ""))
+                self.assertEqual(str(name1), str(name2))
+                self.assertEqual(name1, name2)

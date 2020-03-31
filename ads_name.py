@@ -95,6 +95,20 @@ class ADSName:
             if middle_name is not None:
                 self._set_middle_name_or_initial(middle_name)
         
+        # This value is used in equality checking (a very frequent operation),
+        # so it is memoized for speed. One goal here is to ensure consistent
+        # formatting so that changes in input spacing or punctuation still
+        # produce the same output. This is valuable for e.g. caching.
+        self._qualified_full_name = self.last_name
+        if self.first_name is not None:
+            self._qualified_full_name += ", " + self.first_name
+        elif self.first_initial is not None:
+            self._qualified_full_name += ", " + self.first_initial + "."
+        if self.middle_name is not None:
+            self._qualified_full_name += " " + self.middle_name
+        elif self.middle_initial is not None:
+            self._qualified_full_name += " " + self.middle_initial + "."
+        
         if len(self._last_name) > 1:
             if self._last_name.startswith("="):
                 self._exact = True
@@ -106,10 +120,7 @@ class ADSName:
                 self._exclude_less_specific = True
                 self._last_name = self._last_name[1:]
         
-        # This value is used in equality checking (a very frequent operation),
-        # so it is memoized for speed
-        self._qualified_full_name = self._original_name.lower()
-    
+
     def _set_first_name_or_initial(self, first_name):
         if (len(first_name) == 1 or
                 (len(first_name) == 2 and first_name[-1] == '.')):
@@ -281,7 +292,6 @@ class ADSName:
         if output[0] in ('=', '<', '>'):
             return output[1:]
         return output
-        
     
     @property
     def qualified_full_name(self):
