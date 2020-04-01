@@ -36,14 +36,21 @@ class NameAwareDict(Generic[HasName]):
                 return
         items.append(value)
     
-    # def __delitem__(self, key):
-    #     if type(key) == str:
-    #         key = ADSName(key)
-    #     nodes = self.nodes_by_last_name[key.last_name]
-    #     for i, node in enumerate(nodes):
-    #         if node.name == key:
-    #             nodes.pop(i)
-    #             return
+    def __delitem__(self, key):
+        if type(key) == str:
+            key = ADSName.parse(key)
+        items = self.items_by_last_name[key.last_name]
+        for i, item in enumerate(items):
+            if item.name == key:
+                items.pop(i)
+                return
+    
+    def keys(self):
+        keys = []
+        for items in self.items_by_last_name.values():
+            for item in items:
+                keys.append(item.name)
+        return keys
     
     def __len__(self):
         count = 0

@@ -1,13 +1,14 @@
 from unittest import TestCase
 
 from ads_name import ADSName
-from name_aware import NameAwareDict, PathNode
+from name_aware import NameAwareDict
+from path_node import PathNode
 
 equal_names = [ADSName.parse(n) for n in ("Murray, Stephen",
-                                    "Murray, S.",
-                                    "Murray, Stephen S")]
+                                          "Murray, S.",
+                                          "Murray, Stephen S")]
 diff_names  = [ADSName.parse(n) for n in ("Murray, Eva",
-                                    "Burray, Eva")]
+                                          "Burray, Eva")]
 
 
 class TestNameAwareDict(TestCase):
@@ -32,14 +33,30 @@ class TestNameAwareDict(TestCase):
         nad[equal_names[2]] = PathNode(equal_names[2])
         self.assertIsNot(node, nad[equal_names[0]])
     
-    # def test_del_item(self):
-    #     nad = NameAwareDict()
-    #     for name in diff_names:
-    #         nad[name] = Node(name)
-    #     
-    #     del nad[diff_names[0]]
-    #     self.assertNotIn(diff_names[0], nad)
-    #     self.assertIn(diff_names[1], nad)
+    def test_del_item(self):
+        nad = NameAwareDict()
+        for name in diff_names:
+            nad[name] = PathNode(name)
+        
+        self.assertIn(diff_names[0], nad)
+        self.assertIn(diff_names[1], nad)
+        del nad[diff_names[0]]
+        self.assertNotIn(diff_names[0], nad)
+        self.assertIn(diff_names[1], nad)
+        del nad[diff_names[1]]
+        self.assertNotIn(diff_names[1], nad)
+    
+    def test_keys(self):
+        nad = NameAwareDict()
+        for name in diff_names:
+            nad[name] = PathNode(name)
+        keys = nad.keys()
+        self.assertIn(diff_names[0], keys)
+        self.assertIn(diff_names[1], keys)
+        
+        for key in nad:
+            self.assertIn(key, diff_names)
+        
     
     def test_len(self):
         nad = NameAwareDict()
