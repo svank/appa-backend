@@ -68,27 +68,14 @@ class ADS_Buddy:
         query = " OR ".join(query_strings)
         query = f"author:({query})"
         
-        t_start = time.time()
-        
         params = {"q": query,
                   "fq": ["doctype:article", "database:astronomy"],
+                  "start": 0,
                   "rows": 2000,
-                  "fl": ",".join(FIELDS)}
-        r = requests.get("https://api.adsabs.harvard.edu/v1/search/query",
-                         params=params,
-                         headers={"Authorization": f"Bearer {ADS_TOKEN}"})
-        t_stop = time.time()
-
-        response_data = r.json()
-        if response_data['response']['numFound'] > 2000:
-            # TODO: Handle this
-            lb.e(f"Too many ({response_data['response']['numFound']}) documents found for {authors}")
+                  "fl": ",".join(FIELDS),
+                  "sort": "date+asc"}
         
-        documents = self._articles_to_records(response_data['response']['docs'])
-        
-        lb.on_network_complete(t_stop - t_start)
-        if (t_stop - t_start) > 2:
-            lb.w(f"Long ADS query: {t_stop-t_start:.2f} s for {authors}")
+        documents = self._do_query_for_author(params)
         
         author_records = NameAwareDict()
         for author in authors:
@@ -106,6 +93,29 @@ class ADS_Buddy:
             return author_records[query_author]
         else:
             return author_records
+    
+    def _do_query_for_author(self, params):
+        t_start = time.time()
+        r = requests.get("https://api.adsabs.harvard.edu/v1/search/query",
+                         params=params,
+                         headers={"Authorization": f"Bearer {ADS_TOKEN}"})
+        t_elapsed = time.time() - t_start
+        lb.on_network_complete(t_elapsed)
+        if t_elapsed > 2:
+            lb.w(f"Long ADS query: {t_elapsed:.2f} s for {params['q']}")
+        
+        r_data = r.json()
+        documents = self._articles_to_records(r_data['response']['docs'])
+        
+        if r_data['response']['numFound'] > len(documents) + params['start']:
+            lb.i(f"Got too many documents in request."
+                 f" numFound: {r_data['response']['numFound']}"
+                 f" start: {params['start']}"
+                 f" docs rec'd: {len(documents)}")
+            params['start'] += len(documents)
+            documents.extend(self._do_query_for_author(params))
+            
+        return documents
     
     def _articles_to_records(self, articles):
         return [self._article_to_record(art) for art in articles]
