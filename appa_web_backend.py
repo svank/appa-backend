@@ -5,6 +5,7 @@ import traceback
 from flask import Flask, request
 
 import cache_buddy
+from ads_buddy import ADSRateLimitError
 from log_buddy import lb
 from path_finder import PathFinder, PathFinderError
 from route_jsonifyer import to_json
@@ -25,6 +26,14 @@ def find_route():
         return json.dumps({
             "error_key": e.key,
             "error_msg": str(e),
+            "src": pf.src.name.original_name,
+            "dest": pf.dest.name.original_name
+        })
+    except ADSRateLimitError as e:
+        return json.dumps({
+            "error_key": "rate_limit",
+            "error_msg": str(e),
+            "reset": e.reset_time,
             "src": pf.src.name.original_name,
             "dest": pf.dest.name.original_name
         })

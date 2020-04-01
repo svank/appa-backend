@@ -104,6 +104,13 @@ class ADS_Buddy:
         if t_elapsed > 2:
             lb.w(f"Long ADS query: {t_elapsed:.2f} s for {params['q']}")
         
+        if int(r.headers.get('X-RateLimit-Remaining', 1)) <= 1:
+            reset = time.strftime(
+                "%Y-%m-%d %H:%M:%S UTC",
+                time.gmtime(int(r.headers.get('X-RateLimit-Reset', 0))))
+            lb.e("ADS quota exceeded, reset at " + reset)
+            raise ADSRateLimitError(r.headers.get('X-RateLimit-Limit'), reset)
+        
         r_data = r.json()
         documents = self._articles_to_records(r_data['response']['docs'])
         
@@ -178,3 +185,9 @@ def _is_int(value):
         return True
     except ValueError:
         return False
+
+
+class ADSRateLimitError(Exception):
+    def __init__(self, limit, reset_time):
+        super().__init__(f"ADS daily query quota of {limit} exceeded, reset at {reset_time}")
+        self.reset_time = reset_time
