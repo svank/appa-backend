@@ -1,4 +1,5 @@
 import dataclasses
+import time
 from typing import List
 
 
@@ -14,6 +15,11 @@ class DocumentRecord:
     pubdate: str
     citation_count: int
     read_count: int
+    timestamp: int = -1
+    
+    def __post_init__(self):
+        if self.timestamp == -1:
+            self.timestamp = int(time.time())
     
     def asdict(self):
         return dataclasses.asdict(self)
