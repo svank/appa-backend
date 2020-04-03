@@ -79,6 +79,22 @@ class PathFinder:
                         lb.d(" Excluded document {document.title:35.35}")
                         continue
                     lb.d(f" Found document {document.title:35.35}...")
+                    
+                    # Here's a tricky one. If "<Last, F" is in the exclude
+                    # list, and if we previously came across "Last, First" and
+                    # we're now expanding that node, we're ok using papers
+                    # written under "Last, First" but we're _not_ ok using
+                    # papers written under "Last, F.". So after we do our
+                    # search for Last, First's papers, we need to ensure
+                    # we're allowed to use each paper by ensuring Last, First's
+                    # name appears on it in a way that's not excluded.
+                    ok_names_for_author = [
+                        author for author in document.authors
+                        if (author == expand_author
+                            and author not in self.excluded_names)]
+                    if len(ok_names_for_author) == 0:
+                        continue
+                    
                     for coauthor in document.authors:
                         # lb.d(f"  Checking coauthor {coauthor}")
                         coauthor = ADSName.parse(coauthor)
