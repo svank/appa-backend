@@ -94,7 +94,7 @@ def _insert_document_data(pairings, doc_data):
             replacement = []
             
             for bibcode in pairings[k1][k2]:
-                doc_record = cache_buddy.load_document_data(bibcode).asdict()
+                doc_record = cache_buddy.load_document(bibcode).asdict()
                 del doc_record['bibcode']
                 doc_data[bibcode] = doc_record
                 

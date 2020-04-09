@@ -14,20 +14,21 @@ Name = Union[str, ADSName]
 class Repository:
     ads_buddy = ADS_Buddy()
     
+    def __init__(self):
+        cache_buddy.refresh()
+    
     def get_author_record(self, author: Name) -> AuthorRecord:
         author = ADSName.parse(author)
         try:
-            author_record = cache_buddy.load_author_data(author)
+            author_record = cache_buddy.load_author(author)
         except CacheMiss:
             author_record = self._try_generating_author_record(author)
             if author_record is None:
                 author_record = self.ads_buddy.get_papers_for_author(author)
                 if type(author_record) == AuthorRecord:
-                    cache_buddy.cache_author_data(author_record)
+                    cache_buddy.cache_author(author_record)
                 else:
-                    for record_author in author_record:
-                        cache_buddy.cache_author_data(
-                            author_record[record_author])
+                    cache_buddy.cache_authors(author_record.values())
                     author_record = author_record[author]
         lb.on_author_queried()
         lb.on_doc_loaded(len(author_record.documents))
@@ -35,10 +36,10 @@ class Repository:
     
     def get_document(self, bibcode) -> DocumentRecord:
         try:
-            document_record = cache_buddy.load_document_data(bibcode)
+            document_record = cache_buddy.load_document(bibcode)
         except CacheMiss:
             document_record = self.ads_buddy.get_document(bibcode)
-            cache_buddy.cache_document_data(document_record)
+            cache_buddy.cache_document(document_record)
         return document_record
     
     def notify_of_upcoming_author_request(self, *authors):
@@ -59,7 +60,7 @@ class Repository:
         
         selected_documents = []
         try:
-            author_record = cache_buddy.load_author_data(author.full_name)
+            author_record = cache_buddy.load_author(author.full_name)
         except CacheMiss:
             return None
         
@@ -71,7 +72,7 @@ class Repository:
 
         new_author_record = AuthorRecord(name=author,
                                          documents=selected_documents)
-        cache_buddy.cache_author_data(new_author_record)
+        cache_buddy.cache_author(new_author_record)
         
         lb.i(f"Author record for {str(author)} constructed from cache")
         return new_author_record

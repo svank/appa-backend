@@ -79,6 +79,14 @@ class NameAwareDict(Generic[HasName]):
         for items in self.items_by_last_name.values():
             for item in items:
                 yield item.name
+    
+    def values(self):
+        values = []
+        for items in self.items_by_last_name.values():
+            for item in items:
+                values.append(item)
+        return values
+        
 
 
 class NameAwareSet(NameAwareDict):

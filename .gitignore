@@ -1,5 +1,5 @@
-ads_token
 cache
+local_config.py
 .idea
 venv
 __pycache__

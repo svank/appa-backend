@@ -1,4 +1,5 @@
 import logging
+import sys
 import time
 from statistics import median
 
@@ -16,7 +17,7 @@ class LogBuddy:
     def __init__(self):
         self.reset_stats()
         self.logger = logging.getLogger("LogBuddy")
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(sys.stdout)
         formatter = logging.Formatter(
             '%(asctime)s - %(levelname)s - %(message)s')
         handler.setFormatter(formatter)
@@ -103,7 +104,7 @@ class LogBuddy:
     def update_progress_cache(self):
         now = time.time()
         if (self.progress_key is not None
-                and now - self.last_cache_update > 0.5):
+                and now - self.last_cache_update > 1):
             self.last_cache_update = now
             cache_buddy.cache_progress_data(
                 ProgressRecord(n_ads_queries=self.n_network_queries,

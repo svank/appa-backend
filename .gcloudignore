@@ -1,0 +1,14 @@
+.gitignore
+appa.py
+appa_web_backend.py
+cache_fs.py
+clean_cache.py
+local_config.sample.py
+route_printer.py
+
+cache
+tests
+venv
+.git
+.idea
+__pycache__

@@ -9,7 +9,7 @@ from repository import Repository
 
 
 class PathFinder:
-    repository = Repository()
+    repository: Repository()
     nodes: NameAwareDict
     src: PathNode
     dest: PathNode
@@ -20,6 +20,7 @@ class PathFinder:
     n_iterations: int
     
     def __init__(self, src, dest, excluded_names=None):
+        self.repository = Repository()
         src = ADSName.parse(src)
         dest = ADSName.parse(dest)
         self.excluded_names = NameAwareSet()
