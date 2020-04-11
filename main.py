@@ -4,6 +4,7 @@ Entry points for Cloud Functions. For local usage, see appa.py
 
 import cache_buddy
 from backend_common import _find_route, _get_progress
+from log_buddy import lb
 
 # Cloud Function responses cannot be larger than 10 MiB. If our response
 # is larger, put it in Cloud Storage and return a link instead.
@@ -11,6 +12,9 @@ MAXIMUM_RESPONSE_SIZE = 9.5 * 1024 * 1024
 # This bucket should be set to auto-delete files after a day or whatever
 from local_config import CLOUD_STORAGE_BUCKET_NAME
 CLOUD_STORAGE_URL_FORMAT = "https://storage.googleapis.com/storage/v1/b/{}/o/{}?alt=media"
+
+lb.set_log_level(lb.INFO)
+lb.i("Instance cold start")
 
 
 def find_route(request):

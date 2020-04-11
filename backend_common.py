@@ -10,7 +10,6 @@ from route_jsonifyer import to_json
 
 
 def _find_route(request):
-    lb.set_log_level(lb.WARNING)
     source, dest, exclude = parse_url_args(request)
     progress_key = make_progress_key(source, dest, exclude)
     lb.set_progress_key(progress_key)
@@ -45,6 +44,7 @@ def _find_route(request):
             "dest": pf.dest.name.original_name
         })
     
+    lb.log_stats()
     lb.reset_stats()
     return data, 200, {'Access-Control-Allow-Origin': '*'}
 

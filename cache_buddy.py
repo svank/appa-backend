@@ -44,7 +44,9 @@ def load_document(bibcode):
         data = _loaded_documents[bibcode]
     except KeyError:
         try:
+            t_start = time.time()
             data = backing_cache.load_document(bibcode)
+            log_buddy.lb.on_doc_load_timed(time.time() - t_start)
         except ValueError as e:
             log_buddy.lb.e(str(e))
             return None
@@ -57,7 +59,9 @@ def load_documents(bibcodes):
         data = [_loaded_documents[bibcode] for bibcode in bibcodes]
     except KeyError:
         try:
+            t_start = time.time()
             data = backing_cache.load_documents(bibcodes)
+            log_buddy.lb.on_doc_load_timed(time.time() - t_start)
         except ValueError as e:
             log_buddy.lb.e(str(e))
             return None
@@ -123,7 +127,9 @@ def load_author(cache_key):
         record = _loaded_authors[cache_key]
     except KeyError:
         try:
+            t_start = time.time()
             data = backing_cache.load_author(cache_key)
+            log_buddy.lb.on_author_load_timed(time.time() - t_start)
         except ValueError as e:
             log_buddy.lb.e(str(e))
             return None

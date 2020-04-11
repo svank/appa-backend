@@ -35,6 +35,8 @@ class LogBuddy:
         self.n_coauthors_considered = 0
         
         self.time_waiting_network = []
+        self.time_waiting_cached_author = 0
+        self.time_waiting_cached_doc = 0
         self.start_time = None
         self.stop_time = None
         
@@ -62,6 +64,12 @@ class LogBuddy:
     def on_doc_loaded(self, n=1):
         self.update_progress_cache()
         self.n_docs_loaded += n
+    
+    def on_doc_load_timed(self, time):
+        self.time_waiting_cached_doc += time
+    
+    def on_author_load_timed(self, time):
+        self.time_waiting_cached_author += time
     
     def on_author_queried(self, n=1):
         self.update_progress_cache()
@@ -99,6 +107,9 @@ class LogBuddy:
             self.i(f"{self.n_network_queries} network queries in "
                    "min/med/max/tot "
                    f"{minimum:.2f}/{med:.2f}/{maximum:.2f}/{total:.2f} s")
+        self.i(f"Spent {self.time_waiting_cached_author:.2f} s loading authors"
+               f" and {self.time_waiting_cached_doc:.2f} s loading docs"
+               " from backing cache")
         self.i(f"Search took {self.get_search_time():.2f} s")
     
     def update_progress_cache(self):
