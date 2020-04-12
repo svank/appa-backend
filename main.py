@@ -43,4 +43,4 @@ def get_progress(request):
 
 
 def clean_cache(request):
-    cache_buddy.backing_cache.clear_stale_data()
+    cache_buddy.clear_stale_data()

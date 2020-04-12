@@ -114,6 +114,10 @@ def load_progress_data(key: str):
 
 
 def clear_stale_data():
+    # Hack: use a different age threshold wile loading records
+    age_store = cache_buddy.MAXIMUM_AGE
+    cache_buddy.MAXIMUM_AGE = cache_buddy.MAXIMUM_AGE_AUTO
+    
     # Cached data is automatically deleted upon load if it's expired
     for author in os.listdir(AUTHOR_CACHE_SUBDIR):
         try:
@@ -130,6 +134,8 @@ def clear_stale_data():
             cache_buddy.load_progress_data(key)
         except cache_buddy.CacheMiss:
             pass
+    
+    cache_buddy.MAXIMUM_AGE = age_store
 
 
 # A dummy batch manager

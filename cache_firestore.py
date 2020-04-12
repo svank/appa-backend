@@ -117,13 +117,13 @@ def load_progress_data(key: str):
 
 def clear_stale_data():
     with batch():
-        doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE
+        doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
         doc_collection = db.collection(DOC_CACHE_COLLECTION)
         doc_query = doc_collection.where('timestamp', '<', doc_thresh)
         for doc in doc_query.stream():
             _delete(doc_collection.document(doc.id))
         
-        author_thresh = time.time() - cache_buddy.MAXIMUM_AGE
+        author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
         author_collection = db.collection(AUTHOR_CACHE_COLLECTION)
         author_query = author_collection.where('timestamp', '<', author_thresh)
         for doc in author_query.stream():

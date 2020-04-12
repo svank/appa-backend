@@ -8,7 +8,10 @@ from document_record import DocumentRecord
 from local_config import backing_cache
 from progress_record import ProgressRecord
 
+# Records older than this will not be loaded
 MAXIMUM_AGE = 31 * 24 * 60 * 60  # 1 month in seconds
+# Records older than this will be removed by clear_stale_data()
+MAXIMUM_AGE_AUTO = MAXIMUM_AGE - 1.1 * 24 * 60 * 60
 MAXIMUM_PROGRESS_AGE = 30 * 60  # 30 min in seconds
 
 
@@ -174,6 +177,10 @@ def load_progress_data(key):
         raise CacheMiss("stale cache data: " + key)
     
     return record
+
+
+def clear_stale_data():
+    backing_cache.clear_stale_data()
 
 
 class CacheMiss(Exception):
