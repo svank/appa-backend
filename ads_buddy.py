@@ -87,12 +87,18 @@ class ADS_Buddy:
         for document in documents:
             for author in document.authors:
                 if author in author_records:
-                    author_records[author].documents.append(document)
+                    author_records[author].documents.append(document.bibcode)
+        
+        for author_record in author_records.values():
+            # Remove any duplicate document listings
+            # Becomes important for papers with _many_ authors, e.g. LIGO
+            # papers, which use only initials and so can have duplicate names
+            author_record.documents = sorted(set(author_record.documents))
         
         if len(authors) == 1:
-            return author_records[query_author]
+            return author_records[query_author], documents
         else:
-            return author_records
+            return author_records, documents
     
     def _do_query_for_author(self, params):
         t_start = time.time()

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Union
 
 import cache_buddy
@@ -24,10 +25,14 @@ class Repository:
         except CacheMiss:
             author_record = self._try_generating_author_record(author)
             if author_record is None:
-                author_record = self.ads_buddy.get_papers_for_author(author)
+                author_record, documents = self.ads_buddy.get_papers_for_author(author)
+                cache_buddy.cache_documents(documents)
                 if type(author_record) == AuthorRecord:
+                    self._fill_in_coauthors(author_record)
                     cache_buddy.cache_author(author_record)
                 else:
+                    for rec in author_record.values():
+                        self._fill_in_coauthors(rec)
                     cache_buddy.cache_authors(author_record.values())
                     author_record = author_record[author]
         lb.on_author_queried()
@@ -49,6 +54,24 @@ class Repository:
                     and not self._can_generate_author_request(author)):
                 self.ads_buddy.add_author_to_prefetch_queue(author)
     
+    def _fill_in_coauthors(self, author_record: AuthorRecord):
+        coauthors = defaultdict(set)
+        appears_as = defaultdict(set)
+        for document in cache_buddy.load_documents(author_record.documents):
+            for coauthor in document.authors:
+                coauthors[coauthor].add(document.bibcode)
+                if coauthor == author_record.name:
+                    appears_as[coauthor].add(document.bibcode)
+        
+        # defaultdict doesn't play nicely with dataclasses' asdict(),
+        # so convert to normal dicts. Also convert sets to (sorted) lists
+        author_record.coauthors = {
+            k: sorted(v) for k, v in coauthors.items()
+        }
+        author_record.appears_as = {
+            k: sorted(v) for k, v in appears_as.items()
+        }
+    
     def _try_generating_author_record(self, author: ADSName):
         """Generate a requested record from existing cache data
         
@@ -64,14 +87,21 @@ class Repository:
         except CacheMiss:
             return None
         
-        for doc in author_record.documents:
+        try:
+            documents = cache_buddy.load_documents(author_record.documents)
+        except CacheMiss:
+            return None
+        
+        for doc in documents:
             for coauthor in doc.authors:
                 if coauthor == author:
-                    selected_documents.append(doc)
+                    selected_documents.append(doc.bibcode)
                     break
 
         new_author_record = AuthorRecord(name=author,
                                          documents=selected_documents)
+        self._fill_in_coauthors(new_author_record)
+        
         cache_buddy.cache_author(new_author_record)
         
         lb.i(f"Author record for {str(author)} constructed from cache")

@@ -42,7 +42,7 @@ def to_json(path_finder: PathFinder, log_buddy: LogBuddy):
         name = output['author_graph']['name']
         auth_record = Repository().get_author_record(path_finder.src.name.original_name)
         output['bibcode_pairings'][name][name] = [
-            doc.bibcode for doc in auth_record.documents]
+            bibcode for bibcode in auth_record.documents]
     
     doc_data = {}
     _insert_document_data(pairings, doc_data)
@@ -80,8 +80,9 @@ def _store_bibcodes_for_node(node: PathNode, store: {}):
     For now, only stores bibcodes---author indices will be back filled
     in _insert_document_data, which loads the document data"""
     for neighbor in node.neighbors_toward_dest:
+        bibcodes = sorted(node.links_toward_dest[neighbor])
         store[node.name.bare_original_name][neighbor.name.bare_original_name] = \
-            list(node.links_toward_dest[neighbor])
+            bibcodes
         _store_bibcodes_for_node(neighbor, store)
 
 

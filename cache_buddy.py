@@ -28,6 +28,12 @@ def cache_document(document_record: DocumentRecord):
     _loaded_documents[document_record.bibcode] = document_record
 
 
+def cache_documents(document_records: []):
+    with backing_cache.batch():
+        for document_record in document_records:
+            cache_document(document_record)
+
+
 def delete_document(bibcode):
     try:
         backing_cache.delete_document(bibcode)
@@ -84,17 +90,14 @@ def _prepare_loaded_document(data):
 
 
 def cache_author(author_record: AuthorRecord):
-    with backing_cache.batch():
-        for doc in author_record.documents:
-            cache_document(doc)
+    cache_key = str(author_record.name)
+    _loaded_authors[cache_key] = author_record
     
-        cache_key = str(author_record.name)
-        _loaded_authors[cache_key] = author_record
-        
-        author_record = author_record.copy()
-        author_record.documents = [d.bibcode for d in author_record.documents]
-        author_record.name = author_record.name.original_name
-        backing_cache.store_author(author_record.asdict(), cache_key)
+    author_record = author_record.copy()
+    author_record.compress()
+    author_record.name = author_record.name.original_name
+    author_record = author_record.asdict()
+    backing_cache.store_author(author_record, cache_key)
 
 
 def cache_authors(author_records: []):
@@ -134,7 +137,7 @@ def load_author(cache_key):
             log_buddy.lb.e(str(e))
             return None
         record = AuthorRecord(**data)
-        record.documents = load_documents(record.documents)
+        record.decompress()
         _loaded_authors[cache_key] = record
     
     if time.time() - record.timestamp > MAXIMUM_AGE:
@@ -175,4 +178,4 @@ def load_progress_data(key):
 
 class CacheMiss(Exception):
     def __init__(self, key):
-        log_buddy.lb.i("Cache miss for " + key)
+        log_buddy.lb.d("Cache miss for " + key)
