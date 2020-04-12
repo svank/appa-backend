@@ -1,15 +1,16 @@
 import json
+import time
 from collections import defaultdict
 
 import cache_buddy
 from ads_name import ADSName
-from log_buddy import LogBuddy
+from log_buddy import lb
 from path_finder import PathFinder
 from path_node import PathNode
 from repository import Repository
 
 
-def to_json(path_finder: PathFinder, log_buddy: LogBuddy):
+def to_json(path_finder: PathFinder):
     """Prepares JSON data output.
     
     There are three main data products included:
@@ -29,6 +30,8 @@ def to_json(path_finder: PathFinder, log_buddy: LogBuddy):
     
     Also included are the parsed, original src and dest names, with =<>
     qualifiers removed, and search statistics."""
+    t_start = time.time()
+    
     output = {}
     output['author_graph'] = _build_dict_for_node(
         path_finder.src)
@@ -51,13 +54,15 @@ def to_json(path_finder: PathFinder, log_buddy: LogBuddy):
     output['original_src'] = path_finder.src.name.bare_original_name
     output['original_dest'] = path_finder.dest.name.bare_original_name
     
+    lb.on_result_prepared(time.time() - t_start)
+    
     output['stats'] = {
-        'n_docs_loaded': log_buddy.n_docs_loaded,
-        'n_authors_loaded': log_buddy.n_authors_queried,
-        'n_names_seen': log_buddy.n_coauthors_considered,
-        'n_network_queries': log_buddy.n_network_queries,
-        'time_waiting_network': sum(log_buddy.time_waiting_network),
-        'total_time': log_buddy.get_search_time()
+        'n_docs_loaded': lb.n_docs_loaded,
+        'n_authors_loaded': lb.n_authors_queried,
+        'n_names_seen': lb.n_coauthors_considered,
+        'n_network_queries': lb.n_network_queries,
+        'time_waiting_network': sum(lb.time_waiting_network),
+        'total_time': lb.get_search_time() + lb.get_result_prep_time(),
     }
     
     return json.dumps(output)

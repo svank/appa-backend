@@ -13,13 +13,13 @@ def _find_route(request):
     source, dest, exclude = parse_url_args(request)
     progress_key = make_progress_key(source, dest, exclude)
     lb.set_progress_key(progress_key)
-    lb.d(f"find_route invoked for src:{source}, dest:{dest}, "
+    lb.i(f"find_route invoked for src:{source}, dest:{dest}, "
          f"excl={';'.join(sorted(exclude))}, pkey={progress_key}")
     
     pf = PathFinder(source, dest, exclude)
     try:
         pf.find_path()
-        data = to_json(pf, lb)
+        data = to_json(pf)
     except PathFinderError as e:
         data = json.dumps({
             "error_key": e.key,

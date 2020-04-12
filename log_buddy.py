@@ -37,6 +37,7 @@ class LogBuddy:
         self.time_waiting_network = []
         self.time_waiting_cached_author = 0
         self.time_waiting_cached_doc = 0
+        self.time_preparing_response = -1
         self.start_time = None
         self.stop_time = None
         
@@ -91,8 +92,16 @@ class LogBuddy:
     def on_stop_path_finding(self):
         self.stop_time = time.time()
     
+    def on_result_prepared(self, time):
+        self.time_preparing_response = time
+    
     def get_search_time(self):
+        if self.stop_time is None or self.start_time is None:
+            return -1
         return self.stop_time - self.start_time
+    
+    def get_result_prep_time(self):
+        return self.time_preparing_response
     
     def log_stats(self):
         self.i(f"{self.n_docs_loaded} docs and {self.n_authors_queried} authors queried")
@@ -111,6 +120,7 @@ class LogBuddy:
                f" and {self.time_waiting_cached_doc:.2f} s loading docs"
                " from backing cache")
         self.i(f"Search took {self.get_search_time():.2f} s")
+        self.i(f"Response prepared in {self.time_preparing_response:.2f} s")
     
     def update_progress_cache(self):
         now = time.time()

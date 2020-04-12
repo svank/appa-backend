@@ -26,6 +26,8 @@ def find_route(request):
         import hashlib
         import json
         
+        lb.i("Storing large result for separate download")
+        
         storage_client = storage.Client()
         bucket = storage_client.bucket(CLOUD_STORAGE_BUCKET_NAME)
         blob_name = hashlib.sha256(data.encode()).hexdigest()
