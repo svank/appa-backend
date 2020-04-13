@@ -78,6 +78,10 @@ def author_is_in_cache(key):
     return key in _author_cache_contents
 
 
+def authors_are_in_cache(keys):
+    return [author_is_in_cache(key) for key in keys]
+
+
 def load_author(key: str):
     fname = os.path.join(AUTHOR_CACHE_SUBDIR, key)
     try:

@@ -157,11 +157,12 @@ class ADS_Buddy:
                         else 0)
         )
     
-    def add_author_to_prefetch_queue(self, author):
-        if author in self.prefetch_set:
-            return
-        self.prefetch_set.add(author)
-        self.prefetch_queue.append(author)
+    def add_authors_to_prefetch_queue(self, *authors):
+        for author in authors:
+            if author in self.prefetch_set:
+                continue
+            self.prefetch_set.add(author)
+            self.prefetch_queue.append(author)
     
     def _select_authors_to_prefetch(self):
         lb.d(f"{len(self.prefetch_queue)} authors in prefetch queue")

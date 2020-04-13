@@ -133,6 +133,28 @@ def author_is_in_cache(name):
             or backing_cache.author_is_in_cache(cache_key))
 
 
+def authors_are_in_cache(names):
+    names = [str(name) for name in names]
+    
+    # We'll do an out-of-order mix of checking our in-memory cache one-by-one
+    # and checking our backing cache in one batch. So here's a name-to-value
+    # mapping to ensure we can send back results in the right order
+    results_by_name = {}
+    
+    names_to_query = []
+    for name in names:
+        if name in _loaded_authors:
+            results_by_name[name] = True
+        else:
+            names_to_query.append(name)
+    
+    for name, value in zip(names_to_query,
+                           backing_cache.authors_are_in_cache(names_to_query)):
+        results_by_name[name] = value
+    
+    return [results_by_name[name] for name in names]
+
+
 def load_author(cache_key):
     cache_key = str(cache_key)
     try:
@@ -151,6 +173,7 @@ def load_author(cache_key):
 
 
 def load_authors(cache_keys):
+    """Note: records are not guaranteed to be returned in the order given"""
     cache_keys = [str(key) for key in cache_keys]
     need_to_load = []
     records = []

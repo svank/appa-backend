@@ -49,19 +49,16 @@ class Repository:
         return document_record
     
     def notify_of_upcoming_author_request(self, *authors):
-        in_cache = []
-        for author in authors:
-            author = ADSName.parse(author)
-            if cache_buddy.author_is_in_cache(author):
-                in_cache.append(author)
-            else:
-                if self._can_generate_author_request(author):
-                    in_cache.append(author.full_name)
-                else:
-                    self.ads_buddy.add_author_to_prefetch_queue(author)
-        # Warm the cache with one bulk load
-        cache_buddy.load_authors(in_cache)
-    
+        authors = [ADSName.parse(author) for author in authors]
+        # If appropriate, the backing cache will pre-fetch the data while
+        # checking if it exists
+        is_in_cache = cache_buddy.authors_are_in_cache(authors)
+        authors = [a for a, iic in zip(authors, is_in_cache) if not iic]
+        
+        can_generate = self._can_generate_author_requests(authors)
+        authors = [a for a, cg in zip(authors, can_generate) if not cg]
+        
+        self.ads_buddy.add_authors_to_prefetch_queue(*authors)
     
     def notify_of_upcoming_document_request(self, *documents):
         # It's very unlikely that we'll ever load a document not already in
@@ -96,7 +93,9 @@ class Repository:
         E.g. If "=Doe, J." is searched for and "Doe, J." is already cached,
         we can generate the requested record without going to ADS."""
         
-        if not self._can_generate_author_request(author):
+        if not (author.exact
+                or author.exclude_more_specific
+                or author.exclude_less_specific):
             return None
         
         selected_documents = []
@@ -125,10 +124,13 @@ class Repository:
         lb.i(f"Author record for {str(author)} constructed from cache")
         return new_author_record
     
-    def _can_generate_author_request(self, author: ADSName):
-        if not (author.exact
-                or author.exclude_more_specific
-                or author.exclude_less_specific):
-            return False
-        
-        return cache_buddy.author_is_in_cache(author.full_name)
+    def _can_generate_author_requests(self, authors: [ADSName]):
+        full_names = [author.full_name for author in authors]
+        cache_eligibility = cache_buddy.authors_are_in_cache(full_names)
+        return [
+            in_cache
+            and (author.exact
+                 or author.exclude_more_specific
+                 or author.exclude_less_specific)
+            for in_cache, author in zip(cache_eligibility, authors)
+        ]

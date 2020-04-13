@@ -8,14 +8,15 @@ import cache_buddy
 DOC_CACHE_COLLECTION = "documents"
 AUTHOR_CACHE_COLLECTION = "authors"
 PROGRESS_CACHE_COLLECTION = "progress"
-AUTHOR_CACHE_MAX_AGE = 540  # seconds
-_author_cache_contents = set()
-_author_cache_contents_timestamp = 0
 
 db = firestore.Client()
 _batch = None
 _batch_size = 0
 _batch_bytes = 0
+
+# When we check if an author exists, that involves retrieving the entire
+# record. So here we'll store those record contents for any later reads.
+_author_data_cache = {}
 
 # A batch can contain 500 operations
 MAX_OPS = 500
@@ -25,12 +26,7 @@ MAX_API_CALL_SIZE = 8 * 1024 * 1024
 
 
 def refresh():
-    global _author_cache_contents, _author_cache_contents_timestamp
-    _author_cache_contents = {
-        doc.id
-        for doc in db.collection(AUTHOR_CACHE_COLLECTION).list_documents()
-    }
-    _author_cache_contents_timestamp = time.time()
+    pass
 
 
 def store_document(data: dict, key: str):
@@ -61,53 +57,73 @@ def load_documents(keys: []):
 def store_author(data: dict, key: str):
     doc_ref = db.collection(AUTHOR_CACHE_COLLECTION).document(key)
     _set(doc_ref, data)
-    _author_cache_contents.add(key)
 
 
 def delete_author(key: str):
     doc_ref = db.collection(AUTHOR_CACHE_COLLECTION).document(key)
     _delete(doc_ref)
-    try:
-        _author_cache_contents.remove(key)
-    except KeyError:
-        pass
 
 
 def author_is_in_cache(key):
-    if time.time() - _author_cache_contents_timestamp > AUTHOR_CACHE_MAX_AGE:
-        refresh()
-    return key in _author_cache_contents
+    data = db.collection(AUTHOR_CACHE_COLLECTION).document(key).get()
+    if data.exists:
+        _author_data_cache[data.id] = data
+        return True
+    else:
+        return False
+
+
+def authors_are_in_cache(keys):
+    doc_refs = [db.collection(AUTHOR_CACHE_COLLECTION).document(key)
+                for key in keys]
+    # get_all does not promise to return documents in the order they were given
+    docs = {doc.id: doc for doc in db.get_all(doc_refs)}
+    result = []
+    for key in keys:
+        if docs[key].exists:
+            _author_data_cache[key] = docs[key]
+            result.append(True)
+        else:
+            result.append(False)
+    
+    return result
 
 
 def load_author(key: str):
-    if not author_is_in_cache(key):
-        raise cache_buddy.CacheMiss(key)
-    
+    try:
+        data = _author_data_cache[key]
+        del _author_data_cache[key]
+        return data.to_dict()
+    except KeyError:
+        pass
     doc_ref = db.collection(AUTHOR_CACHE_COLLECTION).document(key)
     data = doc_ref.get()
     if data.exists:
         return data.to_dict()
     else:
-        if key in _author_cache_contents:
-            refresh()
         raise cache_buddy.CacheMiss(key)
 
 
 def load_authors(keys: [str]):
-    not_in_cache = [key for key in keys if not author_is_in_cache(key)]
-    if len(not_in_cache):
-        raise cache_buddy.CacheMiss(not_in_cache)
+    """Does _not_ return author records in the order of the input names"""
+    not_in_local_cache = []
+    result = []
+    for key in keys:
+        try:
+            result.append(_author_data_cache[key].to_dict())
+            del _author_data_cache[key]
+        except KeyError:
+            not_in_local_cache.append(key)
     
-    doc_refs = [db.collection(AUTHOR_CACHE_COLLECTION).document(key)
-                for key in keys]
-    data = db.get_all(doc_refs)
-    dicts = []
-    for datum in data:
-        if not datum.exists:
-            refresh()
-            raise cache_buddy.CacheMiss(datum.id)
-        dicts.append(datum.to_dict())
-    return dicts
+    if len(not_in_local_cache):
+        doc_refs = [db.collection(AUTHOR_CACHE_COLLECTION).document(key)
+                    for key in keys]
+        data = db.get_all(doc_refs)
+        for datum in data:
+            if not datum.exists:
+                raise cache_buddy.CacheMiss(datum.id)
+            result.append(datum.to_dict())
+    return result
 
 
 def store_progress_data(data: str, key: str):
