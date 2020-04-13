@@ -26,7 +26,8 @@ MAX_API_CALL_SIZE = 8 * 1024 * 1024
 
 
 def refresh():
-    pass
+    global _author_data_cache
+    _author_data_cache = {}
 
 
 def store_document(data: dict, key: str):

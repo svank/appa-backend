@@ -20,6 +20,19 @@ _loaded_authors = dict()
 
 
 def refresh():
+    now = time.time()
+    old = [bibcode
+           for bibcode, record in _loaded_documents.items()
+           if now - record.timestamp > MAXIMUM_AGE_AUTO]
+    for bibcode in old:
+        del _loaded_documents[bibcode]
+    
+    old = [name
+           for name, record in _loaded_authors.items()
+           if now - record.timestamp > MAXIMUM_AGE_AUTO]
+    for name in old:
+        del _loaded_authors[name]
+    
     backing_cache.refresh()
 
 
@@ -241,6 +254,7 @@ def load_progress_data(key):
 
 def clear_stale_data():
     backing_cache.clear_stale_data()
+    refresh()
 
 
 class CacheMiss(Exception):
