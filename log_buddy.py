@@ -1,9 +1,9 @@
 import logging
-import sys
 import time
 from statistics import median
 
 import cache_buddy
+from local_config import logging_handler
 from progress_record import ProgressRecord
 
 
@@ -17,11 +17,7 @@ class LogBuddy:
     def __init__(self):
         self.reset_stats()
         self.logger = logging.getLogger("LogBuddy")
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter(
-            '%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
+        self.logger.addHandler(logging_handler)
     
     def set_progress_key(self, key):
         self.progress_key = key
