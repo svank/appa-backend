@@ -2,7 +2,6 @@ import json
 import time
 from collections import defaultdict
 
-import cache_buddy
 from ads_name import ADSName
 from log_buddy import lb
 from path_finder import PathFinder
@@ -32,23 +31,26 @@ def to_json(path_finder: PathFinder):
     qualifiers removed, and search statistics."""
     t_start = time.time()
     
+    repo = Repository(can_skip_refresh=True)
+    
     output = {}
-    output['author_graph'] = _build_dict_for_node(
-        path_finder.src)
+    output['author_graph'] = _build_dict_for_node(path_finder.src)
     
     pairings = defaultdict(dict)
-    _store_bibcodes_for_node(path_finder.src, pairings)
+    all_bibcodes = set()
+    _store_bibcodes_for_node(path_finder.src, pairings, repo, all_bibcodes)
+    repo.notify_of_upcoming_document_request(*all_bibcodes)
     output['bibcode_pairings'] = pairings
     
     # Special case for when the source and dest authors are the same
     if len(output['author_graph']['neighbors_toward_dest']) == 0:
         name = output['author_graph']['name']
-        auth_record = Repository().get_author_record(path_finder.src.name.original_name)
+        auth_record = repo.get_author_record(path_finder.src.name.original_name)
         output['bibcode_pairings'][name][name] = [
             bibcode for bibcode in auth_record.documents]
     
     doc_data = {}
-    _insert_document_data(pairings, doc_data)
+    _insert_document_data(pairings, doc_data, repo)
     output['doc_data'] = doc_data
     
     output['original_src'] = path_finder.src.name.bare_original_name
@@ -79,19 +81,22 @@ def _build_dict_for_node(node: PathNode):
     return output
 
 
-def _store_bibcodes_for_node(node: PathNode, store: {}):
+def _store_bibcodes_for_node(node: PathNode, store: {},
+                             repo: Repository, all_bibcodes: set):
     """Recursively builds the object linking author pairs to documents.
     
     For now, only stores bibcodes---author indices will be back filled
     in _insert_document_data, which loads the document data"""
     for neighbor in node.neighbors_toward_dest:
         bibcodes = sorted(node.links_toward_dest[neighbor])
+        all_bibcodes.update(bibcodes)
+        
         store[node.name.bare_original_name][neighbor.name.bare_original_name] = \
             bibcodes
-        _store_bibcodes_for_node(neighbor, store)
+        _store_bibcodes_for_node(neighbor, store, repo, all_bibcodes)
 
 
-def _insert_document_data(pairings, doc_data):
+def _insert_document_data(pairings, doc_data, repo):
     """Stores all required document data, and back fills indices"""
     for k1 in pairings.keys():
         for k2 in pairings[k1].keys():
@@ -100,7 +105,7 @@ def _insert_document_data(pairings, doc_data):
             replacement = []
             
             for bibcode in pairings[k1][k2]:
-                doc_record = cache_buddy.load_document(bibcode).asdict()
+                doc_record = repo.get_document(bibcode).asdict()
                 del doc_record['bibcode']
                 doc_data[bibcode] = doc_record
                 

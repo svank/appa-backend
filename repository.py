@@ -15,8 +15,9 @@ Name = Union[str, ADSName]
 class Repository:
     ads_buddy = ADS_Buddy()
     
-    def __init__(self):
-        cache_buddy.refresh()
+    def __init__(self, can_skip_refresh=False):
+        if not can_skip_refresh:
+            cache_buddy.refresh()
     
     def get_author_record(self, author: Name) -> AuthorRecord:
         author = ADSName.parse(author)
@@ -48,11 +49,28 @@ class Repository:
         return document_record
     
     def notify_of_upcoming_author_request(self, *authors):
+        in_cache = []
         for author in authors:
             author = ADSName.parse(author)
-            if (not cache_buddy.author_is_in_cache(author)
-                    and not self._can_generate_author_request(author)):
-                self.ads_buddy.add_author_to_prefetch_queue(author)
+            if cache_buddy.author_is_in_cache(author):
+                in_cache.append(author)
+            else:
+                if self._can_generate_author_request(author):
+                    in_cache.append(author.full_name)
+                else:
+                    self.ads_buddy.add_author_to_prefetch_queue(author)
+        # Warm the cache with one bulk load
+        cache_buddy.load_authors(in_cache)
+    
+    
+    def notify_of_upcoming_document_request(self, *documents):
+        # It's very unlikely that we'll ever load a document not already in
+        # the cache, so this is just a matter of warming the cache in one bulk
+        # load
+        try:
+            cache_buddy.load_documents(documents)
+        except cache_buddy.CacheMiss:
+            pass
     
     def _fill_in_coauthors(self, author_record: AuthorRecord):
         coauthors = defaultdict(set)

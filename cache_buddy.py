@@ -64,18 +64,24 @@ def load_document(bibcode):
 
 
 def load_documents(bibcodes):
-    try:
-        data = [_loaded_documents[bibcode] for bibcode in bibcodes]
-    except KeyError:
+    """Note: documents are not guaranteed to be returned in the order given"""
+    need_to_load = []
+    records = []
+    for key in bibcodes:
+        try:
+            records.append(_loaded_documents[key])
+        except KeyError:
+            need_to_load.append(key)
+    if len(need_to_load):
         try:
             t_start = time.time()
-            data = backing_cache.load_documents(bibcodes)
+            records.extend(backing_cache.load_documents(need_to_load))
             log_buddy.lb.on_doc_load_timed(time.time() - t_start)
         except ValueError as e:
             log_buddy.lb.e(str(e))
             return None
     
-    records = [_prepare_loaded_document(d) for d in data]
+    records = [_prepare_loaded_document(r) for r in records]
     return records
 
 
@@ -134,18 +140,49 @@ def load_author(cache_key):
     except KeyError:
         try:
             t_start = time.time()
-            data = backing_cache.load_author(cache_key)
+            record = backing_cache.load_author(cache_key)
             log_buddy.lb.on_author_load_timed(time.time() - t_start)
         except ValueError as e:
             log_buddy.lb.e(str(e))
             return None
+    record = _prepare_loaded_author(record)
+    
+    return record
+
+
+def load_authors(cache_keys):
+    cache_keys = [str(key) for key in cache_keys]
+    need_to_load = []
+    records = []
+    for key in cache_keys:
+        try:
+            records.append(_loaded_authors[key])
+        except KeyError:
+            need_to_load.append(key)
+    if len(need_to_load):
+        try:
+            t_start = time.time()
+            records.extend(backing_cache.load_authors(need_to_load))
+            log_buddy.lb.on_author_load_timed(time.time() - t_start)
+        except ValueError as e:
+            log_buddy.lb.e(str(e))
+            return None
+    
+    records = [_prepare_loaded_author(record) for record in records]
+    return records
+
+
+def _prepare_loaded_author(data):
+    if type(data) == AuthorRecord:
+        record = data
+    else:
         record = AuthorRecord(**data)
         record.decompress()
-        _loaded_authors[cache_key] = record
+        _loaded_authors[str(record.name)] = record
     
     if time.time() - record.timestamp > MAXIMUM_AGE:
-        delete_author(cache_key)
-        raise CacheMiss("stale cache data: " + cache_key)
+        delete_author(str(record.name))
+        raise CacheMiss("stale cache data: " + str(record.name))
     
     return record
 

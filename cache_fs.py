@@ -90,6 +90,10 @@ def load_author(key: str):
         raise ValueError("Error decoding author cache JSON data" + key)
 
 
+def load_authors(keys: [str]):
+    return [load_author(key) for key in keys]
+
+
 def store_progress_data(data: str, key: str):
     fname = os.path.join(PROGRESS_CACHE_SUBDIR, key)
     data = json.dumps(data, check_circular=False)

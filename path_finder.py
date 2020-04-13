@@ -82,6 +82,7 @@ class PathFinder:
             authors_next = (self.authors_to_expand_src_next
                             if self.expanding_from_src
                             else self.authors_to_expand_dest_next)
+            self.repository.notify_of_upcoming_author_request(*authors)
             for expand_author in authors:
                 lb.d(f"Expanding author {expand_author}")
                 expand_node = self.nodes[expand_author]
@@ -126,7 +127,6 @@ class PathFinder:
                         node.set_dist(expand_node_dist + 1, self.expanding_from_src)
                         node.neighbors(self.expanding_from_src).add(expand_node)
                         authors_next.append(coauthor)
-                        self.repository.notify_of_upcoming_author_request(coauthor)
                     
                     else:
                         # lb.d(f"   Author exists in graph")

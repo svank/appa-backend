@@ -8,7 +8,7 @@ import cache_buddy
 DOC_CACHE_COLLECTION = "documents"
 AUTHOR_CACHE_COLLECTION = "authors"
 PROGRESS_CACHE_COLLECTION = "progress"
-AUTHOR_CACHE_MAX_AGE = 100  # seconds
+AUTHOR_CACHE_MAX_AGE = 540  # seconds
 _author_cache_contents = set()
 _author_cache_contents_timestamp = 0
 
@@ -91,6 +91,23 @@ def load_author(key: str):
         if key in _author_cache_contents:
             refresh()
         raise cache_buddy.CacheMiss(key)
+
+
+def load_authors(keys: [str]):
+    not_in_cache = [key for key in keys if not author_is_in_cache(key)]
+    if len(not_in_cache):
+        raise cache_buddy.CacheMiss(not_in_cache)
+    
+    doc_refs = [db.collection(AUTHOR_CACHE_COLLECTION).document(key)
+                for key in keys]
+    data = db.get_all(doc_refs)
+    dicts = []
+    for datum in data:
+        if not datum.exists:
+            refresh()
+            raise cache_buddy.CacheMiss(datum.id)
+        dicts.append(datum.to_dict())
+    return dicts
 
 
 def store_progress_data(data: str, key: str):
