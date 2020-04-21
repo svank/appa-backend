@@ -52,6 +52,7 @@ def to_json(path_finder: PathFinder):
     doc_data = {}
     _insert_document_data(pairings, doc_data, repo)
     output['doc_data'] = doc_data
+    lb.on_doc_returned(len(doc_data))
     
     output['original_src'] = path_finder.src.name.bare_original_name
     output['original_dest'] = path_finder.dest.name.bare_original_name
@@ -59,12 +60,12 @@ def to_json(path_finder: PathFinder):
     lb.on_result_prepared(time.time() - t_start)
     
     output['stats'] = {
-        'n_docs_loaded': lb.n_docs_loaded,
-        'n_authors_loaded': lb.n_authors_queried,
-        'n_names_seen': lb.n_coauthors_considered,
+        'n_docs_queried': lb.n_docs_queried,
+        'n_authors_queried': lb.n_authors_queried,
+        'n_names_seen': lb.n_coauthors_seen,
         'n_network_queries': lb.n_network_queries,
         'time_waiting_network': sum(lb.time_waiting_network),
-        'total_time': lb.get_search_time() + lb.get_result_prep_time(),
+        'total_time': lb.get_search_time() + lb.get_result_prep_time()
     }
     
     return json.dumps(output)

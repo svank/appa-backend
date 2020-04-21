@@ -23,12 +23,16 @@ class LogBuddy:
         self.progress_key = key
     
     def reset_stats(self):
-        self.n_docs_loaded = 0
+        self.n_docs_returned = 0
         
         self.n_authors_queried = 0
+        self.n_docs_queried = 0
         self.n_network_queries = 0
         
-        self.n_coauthors_considered = 0
+        self.n_coauthors_seen = 0
+        
+        self.distance = -1
+        self.n_connections = -1
         
         self.time_waiting_network = []
         self.time_waiting_cached_author = 0
@@ -58,9 +62,13 @@ class LogBuddy:
     def set_log_level(self, level):
         self.logger.setLevel(level)
     
-    def on_doc_loaded(self, n=1):
+    def on_doc_queried(self, n=1):
+        self.n_docs_queried += n
         self.update_progress_cache()
-        self.n_docs_loaded += n
+    
+    def on_doc_returned(self, n=1):
+        self.n_docs_returned += n
+        self.update_progress_cache()
     
     def on_doc_load_timed(self, time):
         self.time_waiting_cached_doc += time
@@ -69,17 +77,17 @@ class LogBuddy:
         self.time_waiting_cached_author += time
     
     def on_author_queried(self, n=1):
-        self.update_progress_cache()
         self.n_authors_queried += n
-    
-    def on_coauthor_considered(self, n=1):
         self.update_progress_cache()
-        self.n_coauthors_considered += n
+    
+    def on_coauthor_seen(self, n=1):
+        self.n_coauthors_seen += n
+        self.update_progress_cache()
     
     def on_network_complete(self, time):
-        self.update_progress_cache()
         self.n_network_queries += 1
         self.time_waiting_network.append(time)
+        self.update_progress_cache()
     
     def on_start_path_finding(self):
         self.start_time = time.time()
@@ -91,6 +99,12 @@ class LogBuddy:
     def on_result_prepared(self, time):
         self.time_preparing_response = time
     
+    def set_distance(self, distance):
+        self.distance = distance
+    
+    def set_n_connections(self, connections):
+        self.n_connections = connections
+    
     def get_search_time(self):
         if self.stop_time is None or self.start_time is None:
             return -1
@@ -100,10 +114,13 @@ class LogBuddy:
         return self.time_preparing_response
     
     def log_stats(self):
-        self.i(f"{self.n_docs_loaded} docs and {self.n_authors_queried} authors queried")
-        self.i(f"{self.n_coauthors_considered} coauthor names seen")
+        self.i(f"{self.n_connections} connections found w/ distance {self.distance}!")
+        self.i(f"{self.n_docs_queried} docs and {self.n_authors_queried} authors queried")
+        self.i(f"{self.n_coauthors_seen} coauthor names seen")
+        if self.n_docs_returned >= 0:
+            self.i(f"{self.n_docs_returned} docs returned")
         if len(self.time_waiting_network) == 0:
-            self.i("No network queries")
+            self.i("0 network queries")
         else:
             minimum = min(self.time_waiting_network)
             med = median(self.time_waiting_network)
@@ -126,7 +143,7 @@ class LogBuddy:
             cache_buddy.cache_progress_data(
                 ProgressRecord(n_ads_queries=self.n_network_queries,
                                n_authors_queried=self.n_authors_queried,
-                               n_docs_loaded=self.n_docs_loaded),
+                               n_docs_loaded=self.n_docs_queried),
                 self.progress_key
             )
 

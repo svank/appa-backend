@@ -37,7 +37,7 @@ class Repository:
                     cache_buddy.cache_authors(author_record.values())
                     author_record = author_record[author]
         lb.on_author_queried()
-        lb.on_doc_loaded(len(author_record.documents))
+        lb.on_doc_queried(len(author_record.documents))
         return author_record
     
     def get_document(self, bibcode) -> DocumentRecord:

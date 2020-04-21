@@ -14,7 +14,7 @@ def _find_route(request):
     progress_key = make_progress_key(source, dest, exclude)
     lb.set_progress_key(progress_key)
     lb.i(f"find_route invoked for src:{source}, dest:{dest}, "
-         f"excl={';'.join(sorted(exclude))}, pkey={progress_key}")
+         f"excl:{';'.join(sorted(exclude))}, pkey:{progress_key}")
     
     pf = PathFinder(source, dest, exclude)
     try:
