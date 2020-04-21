@@ -9,6 +9,10 @@ route_printer.py
 cache
 tests
 venv
+
+stats
+firestore_listener
+
 .git
 .idea
 __pycache__

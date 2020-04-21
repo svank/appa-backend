@@ -1,0 +1,7 @@
+google-cloud-pubsub
+google-cloud-storage
+google-cloud-monitoring
+
+python-dateutil>=2.8.1
+matplotlib>=3.2.1,<3.3
+# numpy, which is brought in by matplotlib

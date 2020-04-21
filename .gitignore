@@ -1,5 +1,8 @@
 cache
 local_config.py
+firestore_listener/firestore_counter_config.py
+stats/stats_config.py
+
 .idea
 venv
 __pycache__
