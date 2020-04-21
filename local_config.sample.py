@@ -1,5 +1,5 @@
-import cache_fs
-backing_cache = cache_fs
+# The module whose name is in this string will be imported and used
+backing_cache = "cache_fs"
 
 ADS_TOKEN = "token_here"
 
