@@ -93,9 +93,10 @@ class Repository:
         E.g. If "=Doe, J." is searched for and "Doe, J." is already cached,
         we can generate the requested record without going to ADS."""
         
-        if not (author.exact
+        if not (author.exclude_exact_match
                 or author.exclude_more_specific
                 or author.exclude_less_specific):
+            # This author does not have a modifier character in front
             return None
         
         selected_documents = []
@@ -108,7 +109,7 @@ class Repository:
             documents = cache_buddy.load_documents(author_record.documents)
         except CacheMiss:
             return None
-        
+        # TODO: This can be done with author_record.appears_as
         for doc in documents:
             for coauthor in doc.authors:
                 if coauthor == author:
@@ -127,9 +128,11 @@ class Repository:
     def _can_generate_author_requests(self, authors: [ADSName]):
         full_names = [author.full_name for author in authors]
         cache_eligibility = cache_buddy.authors_are_in_cache(full_names)
+        # Check if the given author has limited equality and the
+        # author's full record is in the cache
         return [
             in_cache
-            and (author.exact
+            and (author.exclude_exact_match
                  or author.exclude_more_specific
                  or author.exclude_less_specific)
             for in_cache, author in zip(cache_eligibility, authors)

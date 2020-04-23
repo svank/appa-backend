@@ -16,32 +16,32 @@ def _find_route(request):
     lb.i(f"find_route invoked for src:{source}, dest:{dest}, "
          f"excl:{';'.join(sorted(exclude))}, pkey:{progress_key}")
     
-    pf = PathFinder(source, dest, exclude)
     try:
+        pf = PathFinder(source, dest, exclude)
         pf.find_path()
         data = to_json(pf)
     except PathFinderError as e:
         data = json.dumps({
             "error_key": e.key,
             "error_msg": str(e),
-            "src": pf.src.name.original_name,
-            "dest": pf.dest.name.original_name
+            "src": source,
+            "dest": dest
         })
     except ADSRateLimitError as e:
         data = json.dumps({
             "error_key": "rate_limit",
             "error_msg": str(e),
             "reset": e.reset_time,
-            "src": pf.src.name.original_name,
-            "dest": pf.dest.name.original_name
+            "src": source,
+            "dest": dest
         })
     except:
         lb.e("Uncaught exception: " + traceback.format_exc())
         data = json.dumps({
             "error_key": "unknown",
             "error_msg": "Unexpected server error",
-            "src": pf.src.name.original_name,
-            "dest": pf.dest.name.original_name
+            "src": source,
+            "dest": dest
         })
     
     lb.log_stats()

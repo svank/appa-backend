@@ -37,7 +37,7 @@ class ADSName:
     _middle_name: str = None
     _middle_initial: str = None
     
-    _exact: bool = False
+    _exclude_exact: bool = False
     _exclude_less_specific: bool = False
     _exclude_more_specific: bool = False
     
@@ -95,6 +95,31 @@ class ADSName:
             if middle_name is not None:
                 self._set_middle_name_or_initial(middle_name)
         
+        match_exact = False
+        match_less_specific = False
+        match_more_specific = False
+        modifiers = set()
+        while len(self._last_name) > 1:
+            if self._last_name.startswith('='):
+                match_exact = True
+                self._last_name = self._last_name[1:]
+                modifiers.add('=')
+            elif self._last_name.startswith('<'):
+                match_less_specific = True
+                self._last_name = self._last_name[1:]
+                modifiers.add('<')
+            elif self._last_name.startswith('>'):
+                match_more_specific = True
+                self._last_name = self._last_name[1:]
+                modifiers.add('>')
+            else:
+                break
+        if match_exact or match_less_specific or match_more_specific:
+            self._exclude_more_specific = not match_more_specific
+            self._exclude_less_specific = not match_less_specific
+            self._exclude_exact = not match_exact
+        # else: No modifier was provided; don't exclude anything
+        
         # This value is used in equality checking (a very frequent operation),
         # so it is memoized for speed. One goal here is to ensure consistent
         # formatting so that changes in input spacing or punctuation still
@@ -109,18 +134,17 @@ class ADSName:
         elif self.middle_initial is not None:
             self._qualified_full_name += " " + self.middle_initial + "."
         
-        if len(self._last_name) > 1:
-            if self._last_name.startswith("="):
-                self._exact = True
-                self._last_name = self._last_name[1:]
-            elif self._last_name.startswith("<"):
-                self._exclude_more_specific = True
-                self._last_name = self._last_name[1:]
-            elif self._last_name.startswith(">"):
-                self._exclude_less_specific = True
-                self._last_name = self._last_name[1:]
-        
-
+        # We *could* just save _qualified_full_name before stripping the
+        # modifiers from the last name, but we need to ensure the modifiers
+        # show up in a consistent order, so we re-add them here in a
+        # deterministic way.
+        if '=' in modifiers:
+            self._qualified_full_name = "=" + self._qualified_full_name
+        if '>' in modifiers:
+            self._qualified_full_name = ">" + self._qualified_full_name
+        if '<' in modifiers:
+            self._qualified_full_name = "<" + self._qualified_full_name
+    
     def _set_first_name_or_initial(self, first_name):
         if (len(first_name) == 1 or
                 (len(first_name) == 2 and first_name[-1] == '.')):
@@ -144,45 +168,52 @@ class ADSName:
         elif type(other) is not ADSName:
             return NotImplemented
         
-        if self is other:
+        if self is other and not (self._exclude_exact or other._exclude_exact):
             return True
         
         try:
             return self._equality_cache[other._qualified_full_name]
         except KeyError:
             pass
-
-        if self._exact or other._exact:
-            equal = (
-                self._last_name == other._last_name and
-                self._first_initial == other._first_initial and
-                self._first_name == other._first_name and
-                self._middle_initial == other._middle_initial and
-                self._middle_name == other._middle_name
-            )
         
-        elif ((self._exclude_more_specific or other._exclude_less_specific)
-                and self.level_of_detail < other.level_of_detail):
-            equal = False
+        equal = False
         
-        elif ((self._exclude_less_specific or other._exclude_more_specific)
-                and self.level_of_detail > other.level_of_detail):
-            equal = False
+        exactly_equal = (
+            self._last_name == other._last_name and
+            self._first_initial == other._first_initial and
+            self._first_name == other._first_name and
+            self._middle_initial == other._middle_initial and
+            self._middle_name == other._middle_name
+        )
         
+        if exactly_equal:
+            equal = not (self._exclude_exact or other._exclude_exact)
         else:
-            equal = (
-                self._last_name == other._last_name
-                and
-                ADSName._name_data_are_equal(
-                    (self._first_name, self._first_initial),
-                    (other._first_name, other._first_initial)
-                )
-                and
-                ADSName._name_data_are_equal(
-                    (self._middle_name, self._middle_initial),
-                    (other._middle_name, other._middle_initial)
-                )
+            consistent = (
+                    self._last_name == other._last_name
+                    and
+                    ADSName._name_data_are_equal(
+                        (self._first_name, self._first_initial),
+                        (other._first_name, other._first_initial)
+                    )
+                    and
+                    ADSName._name_data_are_equal(
+                        (self._middle_name, self._middle_initial),
+                        (other._middle_name, other._middle_initial)
+                    )
             )
+            if consistent:
+                # Check if this match is allowed in terms of specificity
+                if ((self._exclude_more_specific or other._exclude_less_specific)
+                        and self.level_of_detail < other.level_of_detail):
+                    equal = False
+                
+                elif ((self._exclude_less_specific or other._exclude_more_specific)
+                        and self.level_of_detail > other.level_of_detail):
+                    equal = False
+                
+                else:
+                    equal = True
         
         self._equality_cache[other._qualified_full_name] = equal
         other._equality_cache[self._qualified_full_name] = equal
@@ -215,7 +246,7 @@ class ADSName:
         self._middle_name = src._middle_name
         self._middle_initial = src._middle_initial
         self._original_name = src._original_name
-        self._exact = src._exact
+        self._exclude_exact = src._exclude_exact
         self._exclude_more_specific = src._exclude_more_specific
         self._exclude_less_specific = src._exclude_less_specific
     
@@ -265,8 +296,8 @@ class ADSName:
         return self._middle_initial
     
     @property
-    def exact(self):
-        return self._exact
+    def exclude_exact_match(self):
+        return self._exclude_exact
     
     @property
     def exclude_less_specific(self):
@@ -282,16 +313,16 @@ class ADSName:
 
     @property
     def bare_original_name(self):
-        if self._original_name[0] in ('=', '<', '>'):
-            return self._original_name[1:]
-        return self._original_name
+        return self._strip_modifiers(self._original_name)
 
     @property
     def full_name(self):
-        output = self._qualified_full_name
-        if output[0] in ('=', '<', '>'):
-            return output[1:]
-        return output
+        return self._strip_modifiers(self._qualified_full_name)
+    
+    def _strip_modifiers(self, name):
+        while len(name) > 0 and name[0] in ('=', '<', '>'):
+            name = name[1:]
+        return name
     
     @property
     def qualified_full_name(self):

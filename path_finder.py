@@ -29,6 +29,13 @@ class PathFinder:
         self.repository = Repository()
         src = ADSName.parse(src)
         dest = ADSName.parse(dest)
+        if src.exclude_exact_match or dest.exclude_exact_match:
+            raise PathFinderError(
+                "src_invalid_lt_gt",
+                "'<' and '>' are invalid modifiers for the source and "
+                "destination authors and can only be used in the exclusions "
+                "list. Try '<=' or '>=' instead."
+            )
         self.excluded_names = NameAwareSet()
         self.excluded_bibcodes = set()
         if excluded_names is not None:
@@ -89,7 +96,7 @@ class PathFinder:
                 expand_node_dist = expand_node.dist(self.expanding_from_src)
                 record = self.repository.get_author_record(expand_author)
 
-                # Here's a tricky one. If "<Last, F" is in the exclude
+                # Here's a tricky one. If "<=Last, F" is in the exclude
                 # list, and if we previously came across "Last, First" and
                 # we're now expanding that node, we're ok using papers
                 # written under "Last, First" but we're _not_ ok using
