@@ -9,35 +9,38 @@ namesA = [
     "murray, s. steve",
     "murray, stephen",
     "murray, stephen s.",
-    "murray, stephen steve"
+    "murray, stephen steve",
+    "murray, stephen steve q."
 ]
 
 # Names and whether they should be equal to each name in namesA
 namesB = [
-    ("murray", True, True, True, True, True, True, True),
-    ("Murray", True, True, True, True, True, True, True),
-    ("murrayer", False, False, False, False, False, False, False),
-    ("M", False, False, False, False, False, False, False),
-    ("murray, s", True, True, True, True, True, True, True),
-    ("Murray, S.", True, True, True, True, True, True, True),
-    ("Burray, s.", False, False, False, False, False, False, False),
-    ("murray, e", True, False, False, False, False, False, False),
-    ("murray, e.", True, False, False, False, False, False, False),
-    ("murray, s s", True, True, True, True, True, True, True),
-    ("Murray, S. s.", True, True, True, True, True, True, True),
-    ("Burray, s. s.", False, False, False, False, False, False, False),
-    ("murray, e s", True, False, False, False, False, False, False),
-    ("murray, s e", True, True, False, False, True, False, False),
-    ("murray, stephen", True, True, True, True, True, True, True),
-    ("burray, stephen", False, False, False, False, False, False, False),
-    ("murray, eva", True, False, False, False, False, False, False),
-    ("murray, stephen s", True, True, True, True, True, True, True),
-    ("murray, stephen e", True, True, False, False, True, False, False),
-    ("burray, stephen s", False, False, False, False, False, False, False),
-    ("murray, eva s", True, False, False, False, False, False, False),
-    ("murray, stephen steve", True, True, True, True, True, True, True),
-    ("murray, stephen eva", True, True, False, False, True, False, False),
-    ("burray, stephen steve", False, False, False, False, False, False, False),
+    ("murray", True, True, True, True, True, True, True, True),
+    ("Murray", True, True, True, True, True, True, True, True),
+    ("murrayer", False, False, False, False, False, False, False, False),
+    ("M", False, False, False, False, False, False, False, False),
+    ("murray, s", True, True, True, True, True, True, True, True),
+    ("Murray, S.", True, True, True, True, True, True, True, True),
+    ("Burray, s.", False, False, False, False, False, False, False, False),
+    ("murray, e", True, False, False, False, False, False, False, False),
+    ("murray, e.", True, False, False, False, False, False, False, False),
+    ("murray, s s", True, True, True, True, True, True, True, True),
+    ("Murray, S. s.", True, True, True, True, True, True, True, True),
+    ("Burray, s. s.", False, False, False, False, False, False, False, False),
+    ("murray, e s", True, False, False, False, False, False, False, False),
+    ("murray, s e", True, True, False, False, True, False, False, False),
+    ("murray, stephen", True, True, True, True, True, True, True, True),
+    ("burray, stephen", False, False, False, False, False, False, False, False),
+    ("murray, eva", True, False, False, False, False, False, False, False),
+    ("murray, stephen s", True, True, True, True, True, True, True, True),
+    ("murray, stephen e", True, True, False, False, True, False, False, False),
+    ("burray, stephen s", False, False, False, False, False, False, False, False),
+    ("murray, stephen s z", True, True, True, True, True, True, True, False),
+    ("burray, stephen s q", False, False, False, False, False, False, False, False),
+    ("murray, eva s", True, False, False, False, False, False, False, False),
+    ("murray, stephen steve", True, True, True, True, True, True, True, True),
+    ("murray, stephen eva", True, True, False, False, True, False, False, False),
+    ("burray, stephen steve", False, False, False, False, False, False, False, False),
 ]
 
 
@@ -144,8 +147,13 @@ class TestADSName(TestCase):
     
     def test_creation(self):
         """
-        Test consistency with giving name as parts versus as a single string
+        Test different ways of instantiationg ADSNames
         """
+        self.assertEqual(
+            ADSName.parse("murray, stephen s. q."),
+            ADSName.parse("murray", "stephen", "s", "q")
+        )
+        
         self.assertEqual(
             ADSName.parse("murray, stephen s"),
             ADSName.parse("murray", "stephen", "s.")
@@ -161,8 +169,22 @@ class TestADSName(TestCase):
             ADSName.parse("murray")
         )
         
-        with self.assertRaises(ValueError):
-            ADSName.parse("murray", middle_name="s")
+        name = ADSName.parse("murray")
+        name2 = ADSName.parse(name)
+        self.assertIs(name, name2)
+        
+        with self.assertRaises(TypeError):
+            ADSName.parse(1)
+        with self.assertRaises(TypeError):
+            ADSName.parse("murray", name)
+        with self.assertRaises(TypeError):
+            ADSName.parse("murray", None)
+    
+    def test_add(self):
+        name = ADSName.parse(namesA[-1])
+        name_str = str(name)
+        self.assertEqual("prefix" + name_str, "prefix" + name)
+        self.assertEqual(name_str + "suffix", name + "suffix")
     
     def test_original_name(self):
         """Test that the original name is stored properly"""

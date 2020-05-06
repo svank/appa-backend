@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import itertools
+from typing import Tuple
+
 
 class ADSName:
     """Implements a singleton representation of names with appropriate equality
@@ -32,10 +35,7 @@ class ADSName:
     which should be used to create ADSName instances.
     """
     _last_name: str
-    _first_name: str = None
-    _first_initial: str = None
-    _middle_name: str = None
-    _middle_initial: str = None
+    _given_names: Tuple[str]
     
     _exclude_exact: bool = False
     _exclude_less_specific: bool = False
@@ -49,51 +49,54 @@ class ADSName:
     _name_cache = {}
     
     @classmethod
-    def parse(cls, last_name, first_name=None, middle_name=None):
+    def parse(cls, last_name, *given_names):
+        """Converts a string to an ADSName.
+        
+        Names may be given as a single string in the format "Last, First, M..."
+        or as a number of strings following the order last, first, middle...
+        
+        Any number of given names are accepted after the last/family name.
+        Except for the last name, single-letter names (followed by an optional
+        period) are assumed to be initials."""
         if type(last_name) == ADSName:
             return last_name
-        key = (last_name, first_name, middle_name)
+        key = (last_name, *given_names)
         if key not in cls._name_cache:
-            instance = ADSName(last_name, first_name, middle_name)
+            instance = ADSName(last_name, *given_names)
             cls._name_cache[key] = instance
             return instance
         return cls._name_cache[key]
     
-    def __init__(self, last_name, first_name=None, middle_name=None):
+    def __init__(self, last_name, *given_names):
         """Do not call this method directly. Instead, use ADSName.parse()."""
-        if type(last_name) != str:
-            raise TypeError("Invalid type for name: " + str(type(last_name)))
+        for name in itertools.chain([last_name], given_names):
+            if type(name) != str:
+                raise TypeError(f"Invalid type: {name} is {type(name)},"
+                                " expected str")
         
         self._equality_cache = {}
         
-        if first_name is None:
-            if middle_name is not None:
-                raise ValueError(
-                    "Cannot provide middle name without first name")
+        if len(given_names):
+            self._original_name = f"{last_name}, {' '.join(given_names)}"
+            self._last_name = last_name
+            self._given_names = given_names
+        else:
             # A complete name has been passed as a single string.
             self._original_name = last_name
             # Let's break it into components
             parts = last_name.split(",", maxsplit=1)
-            self._last_name = parts[0].lower()
+            self._last_name = parts[0]
             
             # Check whether we only have a last name
             if len(parts) > 1 and len(parts[1]) > 0:
-                given_parts = parts[1].split(maxsplit=1)
-                first = given_parts[0]
-                self._set_first_name_or_initial(first)
-                
-                # Check whether we have a middle name
-                if len(given_parts) > 1:
-                    middle = given_parts[1]
-                    self._set_middle_name_or_initial(middle)
-        else:
-            self._original_name = f"{last_name}, {first_name}"
-            if middle_name is not None:
-                self._original_name += f" {middle_name}"
-            self._last_name = last_name.lower()
-            self._set_first_name_or_initial(first_name)
-            if middle_name is not None:
-                self._set_middle_name_or_initial(middle_name)
+                self._given_names = parts[1].split()
+            else:
+                self._given_names = tuple()
+        
+        self._last_name = self._last_name.lower()
+        self._given_names = tuple(n[0].lower() if len(n.rstrip('.')) == 1
+                                  else n.lower()
+                                  for n in self._given_names)
         
         match_exact = False
         match_less_specific = False
@@ -125,14 +128,12 @@ class ADSName:
         # formatting so that changes in input spacing or punctuation still
         # produce the same output. This is valuable for e.g. caching.
         self._qualified_full_name = self.last_name
-        if self.first_name is not None:
-            self._qualified_full_name += ", " + self.first_name
-        elif self.first_initial is not None:
-            self._qualified_full_name += ", " + self.first_initial + "."
-        if self.middle_name is not None:
-            self._qualified_full_name += " " + self.middle_name
-        elif self.middle_initial is not None:
-            self._qualified_full_name += " " + self.middle_initial + "."
+        if len(self._given_names):
+            self._qualified_full_name += ","
+            for given_name in self._given_names:
+                self._qualified_full_name += " " + given_name
+                if len(given_name) == 1:
+                    self._qualified_full_name += "."
         
         # We *could* just save _qualified_full_name before stripping the
         # modifiers from the last name, but we need to ensure the modifiers
@@ -144,20 +145,6 @@ class ADSName:
             self._qualified_full_name = ">" + self._qualified_full_name
         if '<' in modifiers:
             self._qualified_full_name = "<" + self._qualified_full_name
-    
-    def _set_first_name_or_initial(self, first_name):
-        if (len(first_name) == 1 or
-                (len(first_name) == 2 and first_name[-1] == '.')):
-            self._first_initial = first_name[0].lower()
-        else:
-            self._first_name = first_name.lower()
-    
-    def _set_middle_name_or_initial(self, middle_name):
-        if (len(middle_name) == 1 or
-                (len(middle_name) == 2 and middle_name[-1] == '.')):
-            self._middle_initial = middle_name[0].lower()
-        else:
-            self._middle_name = middle_name.lower()
     
     def __eq__(self, other):
         """Checks equality by my understanding of ADS's name-matching rules.
@@ -179,11 +166,8 @@ class ADSName:
         equal = False
         
         exactly_equal = (
-            self._last_name == other._last_name and
-            self._first_initial == other._first_initial and
-            self._first_name == other._first_name and
-            self._middle_initial == other._middle_initial and
-            self._middle_name == other._middle_name
+            self._last_name == other._last_name
+            and self._given_names == other._given_names
         )
         
         if exactly_equal:
@@ -192,15 +176,8 @@ class ADSName:
             consistent = (
                     self._last_name == other._last_name
                     and
-                    ADSName._name_data_are_equal(
-                        (self._first_name, self._first_initial),
-                        (other._first_name, other._first_initial)
-                    )
-                    and
-                    ADSName._name_data_are_equal(
-                        (self._middle_name, self._middle_initial),
-                        (other._middle_name, other._middle_initial)
-                    )
+                    ADSName._name_data_are_consistent(
+                        self._given_names, other._given_names)
             )
             if consistent:
                 # Check if this match is allowed in terms of specificity
@@ -220,35 +197,30 @@ class ADSName:
         return equal
     
     @classmethod
-    def _name_data_are_equal(cls, nd1, nd2):
-        """Accepts and compares two (name, initial) tuples"""
-        # If either is empty...
-        if nd1 == (None, None) or nd2 == (None, None):
+    def _name_data_are_consistent(cls,
+                                  given_names1: Tuple[str],
+                                  given_names2: Tuple[str]):
+        """Accepts and compares for consistency two given name lists"""
+        # If either is empty, they are consistent
+        if len(given_names1) == 0 or len(given_names2) == 0:
             return True
         
-        # If both have a name...
-        if nd1[0] is not None and nd2[0] is not None:
-            return nd1[0] == nd2[0]
-        
-        # If both have an initial...
-        if nd1[1] is not None and nd2[1] is not None:
-            return nd1[1] == nd2[1]
-        
-        # At this point, one is a name and one is an initial
-        name = nd1[0] if nd1[0] is not None else nd2[0]
-        initial = nd1[1] if nd1[1] is not None else nd2[1]
-        return name.startswith(initial)
-    
-    def _copy_from(self, src: ADSName):
-        self._last_name = src._last_name
-        self._first_name = src._first_name
-        self._first_initial = src._first_initial
-        self._middle_name = src._middle_name
-        self._middle_initial = src._middle_initial
-        self._original_name = src._original_name
-        self._exclude_exact = src._exclude_exact
-        self._exclude_more_specific = src._exclude_more_specific
-        self._exclude_less_specific = src._exclude_less_specific
+        # Zip will end iteration when we reach the end of the shorter
+        # input list, which is what we want. (A non-given name is consistent
+        # with anything.)
+        for gn1, gn2 in zip(given_names1, given_names2):
+            if len(gn1) == 1:
+                # gn1 is an initial. gn2 must start with that initial
+                if not gn2.startswith(gn1):
+                    return False
+            elif len(gn2) == 1:
+                # gn2 is an initial. gn1 must start with that initial
+                if not gn1.startswith(gn2):
+                    return False
+            else:
+                if gn1 != gn2:
+                    return False
+        return True
     
     def __str__(self):
         return self.qualified_full_name
@@ -261,13 +233,13 @@ class ADSName:
     
     @property
     def level_of_detail(self):
-        return (
-            (100 if self._last_name is not None else 0)
-            + (20 if self._first_name is not None else 0)
-            + (10 if self._first_initial is not None else 0)
-            + (2 if self._middle_name is not None else 0)
-            + (1 if self._middle_initial is not None else 0)
-        )
+        score = 100 if self._last_name is not None else 0
+        increment = 10
+        for gn in self._given_names:
+            multiplier = 1 if len(gn) == 1 else 2
+            score += increment * multiplier
+            increment /= 10
+        return score
     
     def __add__(self, other):
         return str(self) + other
@@ -280,20 +252,8 @@ class ADSName:
         return self._last_name
     
     @property
-    def first_name(self):
-        return self._first_name
-    
-    @property
-    def first_initial(self):
-        return self._first_initial
-    
-    @property
-    def middle_name(self):
-        return self._middle_name
-    
-    @property
-    def middle_initial(self):
-        return self._middle_initial
+    def given_names(self):
+        return self._given_names
     
     @property
     def exclude_exact_match(self):
