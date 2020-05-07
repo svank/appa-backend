@@ -16,12 +16,13 @@ FIELDS = ['bibcode', 'title', 'author', 'aff', 'doctype',
 
 # These params control how many authors from the prefetch queue are included
 # in each query. Note that the estimated number of papers per author must
-# be high to accomodate outliers with many papers. Note also that in testing,
-# it seems that increasing the number of authors per query, especially beyond
-# two or so, slows down the query on the ADS side and so has mixed results in
-# terms of speeding up the total time spent waiting on the network.
+# be high to accommodate outliers with many papers---it's more of a control
+# parameter than a true estimate. Note also that in testing, I've gotten mixed
+# results at different times on whether increasing the number of authors per
+# query, especially beyond two or so, offers a true speed advantage or if it
+# slows down the query on the ADS side enough that it doesn't help much.
 MAXIMUM_RESPONSE_SIZE = 2000
-ESTIMATED_DOCUMENTS_PER_AUTHOR = 600
+ESTIMATED_DOCUMENTS_PER_AUTHOR = 300
 
 
 class ADS_Buddy:
@@ -56,8 +57,8 @@ class ADS_Buddy:
         
         lb.i(f"Querying ADS for author " + query_author)
         if len(authors) > 1:
-            lb.i(f"Also prefetching {len(authors) - 1} others")
-            lb.d(" Prefetching " + str(authors))
+            lb.i(" Also prefetching. Query: " + "; ".join(
+                [str(a) for a in authors]))
         
         query_strings = []
         for author in authors:
@@ -77,7 +78,7 @@ class ADS_Buddy:
                   "fl": ",".join(FIELDS),
                   "sort": "date+asc"}
         
-        documents = self._do_query_for_author(params)
+        documents = self._do_query_for_author(params, len(authors))
         
         author_records = NameAwareDict()
         for author in authors:
@@ -102,14 +103,14 @@ class ADS_Buddy:
         else:
             return author_records, documents
     
-    def _do_query_for_author(self, params):
+    def _do_query_for_author(self, params, n_authors):
         t_start = time.time()
         r = requests.get("https://api.adsabs.harvard.edu/v1/search/query",
                          params=params,
                          headers={"Authorization": f"Bearer {ADS_TOKEN}"})
         t_elapsed = time.time() - t_start
         lb.on_network_complete(t_elapsed)
-        if t_elapsed > 2:
+        if t_elapsed > 2 * n_authors:
             lb.w(f"Long ADS query: {t_elapsed:.2f} s for {params['q']}")
         
         if int(r.headers.get('X-RateLimit-Remaining', 1)) <= 1:
@@ -128,7 +129,7 @@ class ADS_Buddy:
                  f" start: {params['start']}"
                  f" docs rec'd: {len(documents)}")
             params['start'] += len(documents)
-            documents.extend(self._do_query_for_author(params))
+            documents.extend(self._do_query_for_author(params, n_authors))
             
         return documents
     
