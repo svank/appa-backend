@@ -274,8 +274,8 @@ def load_progress_data(key):
     return record
 
 
-def clear_stale_data():
-    backing_cache.clear_stale_data()
+def clear_stale_data(**kwargs):
+    backing_cache.clear_stale_data(**kwargs)
     refresh()
 
 

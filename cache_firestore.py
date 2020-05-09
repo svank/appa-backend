@@ -149,25 +149,39 @@ def load_progress_data(key: str):
     raise cache_buddy.CacheMiss(key)
 
 
-def clear_stale_data():
+def clear_stale_data(authors=True, documents=True, progress=True):
     with batch():
-        doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
-        doc_collection = db.collection(DOC_CACHE_COLLECTION)
-        doc_query = doc_collection.where('timestamp', '<', doc_thresh)
-        for doc in doc_query.stream():
-            _delete(doc_collection.document(doc.id))
+        if authors:
+            author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
+            author_collection = db.collection(AUTHOR_CACHE_COLLECTION)
+            author_query = author_collection.where(
+                'timestamp', '<', author_thresh)
+            i = 0
+            for doc in author_query.stream():
+                i += 1
+                _delete(author_collection.document(doc.id))
+            cache_buddy.log_buddy.lb.i(f"Cleared {i} authors")
         
-        author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
-        author_collection = db.collection(AUTHOR_CACHE_COLLECTION)
-        author_query = author_collection.where('timestamp', '<', author_thresh)
-        for doc in author_query.stream():
-            _delete(author_collection.document(doc.id))
+        if documents:
+            doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
+            doc_collection = db.collection(DOC_CACHE_COLLECTION)
+            doc_query = doc_collection.where('timestamp', '<', doc_thresh)
+            i = 0
+            for doc in doc_query.stream():
+                i += 1
+                _delete(doc_collection.document(doc.id))
+            cache_buddy.log_buddy.lb.i(f"Cleared {i} documents")
         
-        progress_thresh = time.time() - cache_buddy.MAXIMUM_PROGRESS_AGE
-        progress_collection = db.collection(PROGRESS_CACHE_COLLECTION)
-        progress_query = progress_collection.where('timestamp', '<', progress_thresh)
-        for doc in progress_query.stream():
-            _delete(progress_collection.document(doc.id))
+        if progress:
+            progress_thresh = time.time() - cache_buddy.MAXIMUM_PROGRESS_AGE
+            progress_collection = db.collection(PROGRESS_CACHE_COLLECTION)
+            progress_query = progress_collection.where(
+                'timestamp', '<', progress_thresh)
+            i = 0
+            for doc in progress_query.stream():
+                i += 1
+                _delete(progress_collection.document(doc.id))
+            cache_buddy.log_buddy.lb.i(f"Cleared {i} progress parcels")
 
 
 def _set(doc_ref, data):

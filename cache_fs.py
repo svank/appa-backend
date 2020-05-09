@@ -121,27 +121,32 @@ def load_progress_data(key: str):
         raise cache_buddy.CacheMiss(key)
 
 
-def clear_stale_data():
+def clear_stale_data(authors=True, documents=True, progress=True):
     # Hack: use a different age threshold wile loading records
     age_store = cache_buddy.MAXIMUM_AGE
     cache_buddy.MAXIMUM_AGE = cache_buddy.MAXIMUM_AGE_AUTO
     
     # Cached data is automatically deleted upon load if it's expired
-    for author in os.listdir(AUTHOR_CACHE_SUBDIR):
-        try:
-            cache_buddy.load_author(author)
-        except cache_buddy.CacheMiss:
-            pass
-    for document in os.listdir(DOC_CACHE_SUBDIR):
-        try:
-            cache_buddy.load_document(document)
-        except cache_buddy.CacheMiss:
-            pass
-    for key in os.listdir(PROGRESS_CACHE_SUBDIR):
-        try:
-            cache_buddy.load_progress_data(key)
-        except cache_buddy.CacheMiss:
-            pass
+    if authors:
+        for author in os.listdir(AUTHOR_CACHE_SUBDIR):
+            try:
+                cache_buddy.load_author(author)
+            except cache_buddy.CacheMiss:
+                pass
+    
+    if documents:
+        for document in os.listdir(DOC_CACHE_SUBDIR):
+            try:
+                cache_buddy.load_document(document)
+            except cache_buddy.CacheMiss:
+                pass
+    
+    if progress:
+        for key in os.listdir(PROGRESS_CACHE_SUBDIR):
+            try:
+                cache_buddy.load_progress_data(key)
+            except cache_buddy.CacheMiss:
+                pass
     
     cache_buddy.MAXIMUM_AGE = age_store
 

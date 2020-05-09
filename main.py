@@ -46,3 +46,20 @@ def get_progress(request):
 
 def clean_cache(request):
     cache_buddy.clear_stale_data()
+
+
+# When we clear stale data in the cache, it's always possible that a
+# path-finding that's in-progress could have already read stale author records
+# and has not yet but will read corresponding stale document records. If we
+# clear all the stale data at that point, the route-finding process will have
+# to pull the document data from ADS, and later that same document data will
+# be pulled again if/when the author record is pulled from ADS by a future
+# route-finding process. So clearing both author and document records is best
+# done at a quiet time when no route-finding is happening. But simply clearing
+# stale author records doesn't have any associated problems: if a current
+# process has used the stale author record, the stale document records will
+# still be around. And if the author data is pulled from ADS before the
+# stale document records are deleted, they'll be updated, saving our Firestore
+# delete quota.
+def clean_cache_not_documents(request):
+    cache_buddy.clear_stale_data(documents=False)
