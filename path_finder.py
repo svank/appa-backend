@@ -29,7 +29,7 @@ class PathFinder:
         self.repository = Repository()
         src = ADSName.parse(src)
         dest = ADSName.parse(dest)
-        if src.exclude_exact_match or dest.exclude_exact_match:
+        if src.excludes_self or dest.excludes_self:
             raise PathFinderError(
                 "src_invalid_lt_gt",
                 "'<' and '>' are invalid modifiers for the source and "

@@ -67,7 +67,7 @@ class TestADSName(TestCase):
                 if i != j:
                     self.assertNotEqual(namesA[j], aname)
     
-    def test_detail_equality(self):
+    def test_specificity_equality(self):
         for i, name1 in enumerate(namesA):
             name1_lt = ADSName.parse("<" + name1)
             name1_gt = ADSName.parse(">" + name1)
@@ -96,8 +96,32 @@ class TestADSName(TestCase):
             
             for j, name2 in enumerate(namesA):
                 name2 = ADSName.parse(name2)
-                # A larger index corresponds to more detail
-                if i > j:
+                # A larger index corresponds to more specificity, with a
+                # few exceptions
+                if i == j:
+                    self.assertNotEqual(name1_lt, name2)
+                    self.assertNotEqual(name2, name1_lt)
+                    self.assertNotEqual(name1_gt, name2)
+                    self.assertNotEqual(name2, name1_gt)
+    
+                    self.assertEqual(name1_lte, name2)
+                    self.assertEqual(name2, name1_lte)
+                    self.assertEqual(name1_gte, name2)
+                    self.assertEqual(name2, name1_gte)
+                elif ((i == 2 and j == 4)
+                        or (i == 3 and j in (4, 5))
+                        or (i == 4 and j in (2, 3))
+                        or (i == 5 and j == 3)):
+                    self.assertNotEqual(name1_lt, name2)
+                    self.assertNotEqual(name2, name1_lt)
+                    self.assertNotEqual(name1_gt, name2)
+                    self.assertNotEqual(name2, name1_gt)
+    
+                    self.assertNotEqual(name1_lte, name2)
+                    self.assertNotEqual(name2, name1_lte)
+                    self.assertNotEqual(name1_gte, name2)
+                    self.assertNotEqual(name2, name1_gte)
+                elif i > j:
                     self.assertEqual(name1_lt, name2)
                     self.assertEqual(name2, name1_lt)
                     self.assertNotEqual(name1_gt, name2)
@@ -118,20 +142,12 @@ class TestADSName(TestCase):
                     self.assertEqual(name1_gte, name2)
                     self.assertEqual(name2, name1_gte)
                 else:
-                    self.assertNotEqual(name1_lt, name2)
-                    self.assertNotEqual(name2, name1_lt)
-                    self.assertNotEqual(name1_gt, name2)
-                    self.assertNotEqual(name2, name1_gt)
-                    
-                    self.assertEqual(name1_lte, name2)
-                    self.assertEqual(name2, name1_lte)
-                    self.assertEqual(name1_gte, name2)
-                    self.assertEqual(name2, name1_gte)
+                    self.fail("Shouldn't get here")
     
     def test_repr(self):
         """Test than string representations of ADSNames are as expected"""
         for name in namesA:
-            for modifier in ['', '=', '>', '<', '<=', '>=', '<>=']:
+            for modifier in ['', '=', '>', '<', '<=', '>=']:
                 name2 = modifier + name
                 self.assertEqual(name2, repr(ADSName.parse(name2)))
             
@@ -140,10 +156,6 @@ class TestADSName(TestCase):
             
             name2 = "<=" + name
             self.assertEqual(name2, repr(ADSName.parse("=<" + name)))
-            
-            for modifier in ['><=', '=<>', '<=>']:
-                name2 = "<>=" + name
-                self.assertEqual(name2, repr(ADSName.parse(modifier + name)))
     
     def test_creation(self):
         """

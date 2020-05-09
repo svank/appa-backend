@@ -63,9 +63,7 @@ class ADS_Buddy:
         query_strings = []
         for author in authors:
             query_string = '"' + author.full_name + '"'
-            if (not author.exclude_exact_match
-                    and author.exclude_more_specific
-                    and author.exclude_less_specific):
+            if author.require_exact_match:
                 query_string = "=" + query_string
             query_strings.append(query_string)
         query = " OR ".join(query_strings)

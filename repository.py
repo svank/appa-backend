@@ -93,9 +93,9 @@ class Repository:
         E.g. If "=Doe, J." is searched for and "Doe, J." is already cached,
         we can generate the requested record without going to ADS."""
         
-        if not (author.exclude_exact_match
-                or author.exclude_more_specific
-                or author.exclude_less_specific):
+        if not (author.require_exact_match
+                or author.require_more_specific
+                or author.require_less_specific):
             # This author does not have a modifier character in front
             return None
         
@@ -132,8 +132,8 @@ class Repository:
         # author's full record is in the cache
         return [
             in_cache
-            and (author.exclude_exact_match
-                 or author.exclude_more_specific
-                 or author.exclude_less_specific)
+            and (author.require_exact_match
+                 or author.require_more_specific
+                 or author.require_less_specific)
             for in_cache, author in zip(cache_eligibility, authors)
         ]

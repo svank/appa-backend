@@ -37,9 +37,10 @@ class ADSName:
     _last_name: str
     _given_names: Tuple[str]
     
-    _exclude_exact: bool = False
-    _exclude_less_specific: bool = False
-    _exclude_more_specific: bool = False
+    _require_exact: bool = False
+    _require_less_specific: bool = False
+    _require_more_specific: bool = False
+    _allow_same_specific: bool = True
     
     _original_name: str
     _full_name: str
@@ -98,30 +99,31 @@ class ADSName:
                                   else n.lower()
                                   for n in self._given_names)
         
-        match_exact = False
-        match_less_specific = False
-        match_more_specific = False
-        modifiers = set()
-        while len(self._last_name) > 1:
-            if self._last_name.startswith('='):
-                match_exact = True
-                self._last_name = self._last_name[1:]
-                modifiers.add('=')
-            elif self._last_name.startswith('<'):
-                match_less_specific = True
-                self._last_name = self._last_name[1:]
-                modifiers.add('<')
-            elif self._last_name.startswith('>'):
-                match_more_specific = True
-                self._last_name = self._last_name[1:]
-                modifiers.add('>')
-            else:
-                break
-        if match_exact or match_less_specific or match_more_specific:
-            self._exclude_more_specific = not match_more_specific
-            self._exclude_less_specific = not match_less_specific
-            self._exclude_exact = not match_exact
-        # else: No modifier was provided; don't exclude anything
+        modifier_prefix = ""
+        if self._last_name[0:2] in (">=", "=>"):
+            self._require_more_specific = True
+            self._allow_same_specific = True
+            self._last_name = self._last_name[2:]
+            modifier_prefix = ">="
+        elif self._last_name[0:2] in ("<=", "=<"):
+            self._require_less_specific = True
+            self._allow_same_specific = True
+            self._last_name = self._last_name[2:]
+            modifier_prefix = "<="
+        elif self._last_name.startswith(">"):
+            self._require_more_specific = True
+            self._allow_same_specific = False
+            self._last_name = self._last_name[1:]
+            modifier_prefix = ">"
+        elif self._last_name.startswith("<"):
+            self._require_less_specific = True
+            self._allow_same_specific = False
+            self._last_name = self._last_name[1:]
+            modifier_prefix = "<"
+        elif self._last_name.startswith("="):
+            self._require_exact = True
+            self._last_name = self._last_name[1:]
+            modifier_prefix = "="
         
         # This value is used in equality checking (a very frequent operation),
         # so it is memoized for speed. One goal here is to ensure consistent
@@ -139,12 +141,7 @@ class ADSName:
         # modifiers from the last name, but we need to ensure the modifiers
         # show up in a consistent order, so we re-add them here in a
         # deterministic way.
-        if '=' in modifiers:
-            self._qualified_full_name = "=" + self._qualified_full_name
-        if '>' in modifiers:
-            self._qualified_full_name = ">" + self._qualified_full_name
-        if '<' in modifiers:
-            self._qualified_full_name = "<" + self._qualified_full_name
+        self._qualified_full_name = modifier_prefix + self._qualified_full_name
     
     def __eq__(self, other):
         """Checks equality by my understanding of ADS's name-matching rules.
@@ -155,7 +152,9 @@ class ADSName:
         elif type(other) is not ADSName:
             return NotImplemented
         
-        if self is other and not (self._exclude_exact or other._exclude_exact):
+        if (self is other
+                and self._allow_same_specific
+                and other._allow_same_specific):
             return True
         
         try:
@@ -163,32 +162,32 @@ class ADSName:
         except KeyError:
             pass
         
-        equal = False
+        exactly_equal = (self._last_name == other._last_name
+                         and self._given_names == other._given_names)
         
-        exactly_equal = (
-            self._last_name == other._last_name
-            and self._given_names == other._given_names
-        )
-        
-        if exactly_equal:
-            equal = not (self._exclude_exact or other._exclude_exact)
+        if self._require_exact or other._require_exact:
+            equal = exactly_equal
+        elif exactly_equal:
+            equal = (self._allow_same_specific
+                     and other._allow_same_specific)
         else:
             consistent = (
-                    self._last_name == other._last_name
-                    and
-                    ADSName._name_data_are_consistent(
-                        self._given_names, other._given_names)
+                self._last_name == other._last_name
+                and
+                ADSName._name_data_are_consistent(
+                    self._given_names, other._given_names)
             )
-            if consistent:
-                # Check if this match is allowed in terms of specificity
-                if ((self._exclude_more_specific or other._exclude_less_specific)
-                        and self.level_of_detail < other.level_of_detail):
+            if not consistent:
+                equal = False
+            else:
+                if ((self._require_more_specific
+                     or other._require_less_specific)
+                        and not other.is_more_specific_than(self)):
                     equal = False
-                
-                elif ((self._exclude_less_specific or other._exclude_more_specific)
-                        and self.level_of_detail > other.level_of_detail):
+                elif ((self._require_less_specific
+                       or other._require_more_specific)
+                        and not self.is_more_specific_than(other)):
                     equal = False
-                
                 else:
                     equal = True
         
@@ -221,6 +220,34 @@ class ADSName:
                 if gn1 != gn2:
                     return False
         return True
+    
+    def is_more_specific_than(self, other: ADSName):
+        """Returns True if `self` is more specific than the given other name.
+        
+        A name is "more specific" if it includes every given name in the other
+        name, and it either contains an additional given name or contains a
+        spelled out given name where the other ADSName contained an initial.
+        In other words, it must include all the information in the other name,
+        plus some amount of additional information."""
+        # If we have fewer given names, we can't be more specific.
+        if len(self._given_names) < len(other._given_names):
+            return False
+        
+        # Now we need to ensure we're consistent with the other name _and_
+        # have something that counts as "more specific".
+        # We count as more specific if we have more given names.
+        more_specific = len(self._given_names) > len(other._given_names)
+        
+        # Now check the given names we have in common
+        for s_gn, o_gn in zip(self._given_names, other._given_names):
+            # Check if this is a spelled-out name replacing an initial
+            if len(s_gn) > 1 and len(o_gn) == 1 and s_gn.startswith(o_gn):
+                more_specific = True
+            # If that's not the case, both ADSNames must have the same content
+            # for this given name
+            elif s_gn != o_gn:
+                return False
+        return more_specific
     
     def __str__(self):
         return self.qualified_full_name
@@ -256,16 +283,21 @@ class ADSName:
         return self._given_names
     
     @property
-    def exclude_exact_match(self):
-        return self._exclude_exact
+    def require_exact_match(self):
+        return self._require_exact
     
     @property
-    def exclude_less_specific(self):
-        return self._exclude_less_specific
+    def require_less_specific(self):
+        return self._require_less_specific
     
     @property
-    def exclude_more_specific(self):
-        return self._exclude_more_specific
+    def require_more_specific(self):
+        return self._require_more_specific
+    
+    @property
+    def excludes_self(self):
+        return ((self._require_less_specific or self._require_more_specific)
+                and not self._allow_same_specific)
     
     @property
     def original_name(self):
