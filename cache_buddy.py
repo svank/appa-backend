@@ -79,7 +79,7 @@ def load_document(bibcode):
     return _prepare_loaded_document(data)
 
 
-def load_documents(bibcodes):
+def load_documents(bibcodes, missing_ok=False):
     """Note: documents are not guaranteed to be returned in the order given"""
     need_to_load = []
     records = []
@@ -91,19 +91,35 @@ def load_documents(bibcodes):
     if len(need_to_load):
         try:
             t_start = time.time()
-            records.extend(backing_cache.load_documents(need_to_load))
+            try:
+                records.extend(backing_cache.load_documents(need_to_load))
+            except CacheMiss:
+                if missing_ok:
+                    pass
+                else:
+                    raise
             log_buddy.lb.on_doc_load_timed(time.time() - t_start)
         except ValueError as e:
             log_buddy.lb.e(str(e))
             return None
-    
+
     records = [_prepare_loaded_document(r) for r in records]
+    
+    if any([r is None for r in records]):
+        if missing_ok:
+            records = [r for r in records if r is not None]
+        else:
+            present = {r.bibcode for r in records if r is not None}
+            missing = set(bibcodes) - present
+            raise CacheMiss(missing)
     return records
 
 
 def _prepare_loaded_document(data):
     if type(data) == DocumentRecord:
         record = data
+    elif data is None:
+        return None
     else:
         record = DocumentRecord(**data)
         _loaded_documents[record.bibcode] = record

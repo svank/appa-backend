@@ -65,7 +65,7 @@ class Repository:
         # the cache, so this is just a matter of warming the cache in one bulk
         # load
         try:
-            cache_buddy.load_documents(documents)
+            cache_buddy.load_documents(documents, missing_ok=True)
         except cache_buddy.CacheMiss:
             pass
     
