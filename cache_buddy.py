@@ -40,11 +40,13 @@ def refresh():
 
 
 def cache_document(document_record: DocumentRecord):
+    _loaded_documents[document_record.bibcode] = document_record
+    
+    document_record = document_record.copy()
+    document_record.compress()
     backing_cache.store_document(
         document_record.asdict(),
-        document_record.bibcode
-    )
-    _loaded_documents[document_record.bibcode] = document_record
+        document_record.bibcode)
 
 
 def cache_documents(document_records: []):
@@ -122,6 +124,7 @@ def _prepare_loaded_document(data):
         return None
     else:
         record = DocumentRecord(**data)
+        record.decompress()
         _loaded_documents[record.bibcode] = record
     
     if time.time() - record.timestamp > MAXIMUM_AGE:

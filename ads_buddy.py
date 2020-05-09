@@ -12,7 +12,8 @@ from log_buddy import lb
 from name_aware import NameAwareDict
 
 FIELDS = ['bibcode', 'title', 'author', 'aff', 'doctype',
-          'keyword', 'pub', 'date', 'citation_count', 'read_count']
+          'keyword', 'pub', 'date', 'citation_count', 'read_count',
+          'orcid_pub', 'orcid_user', 'orcid_other']
 
 # These params control how many authors from the prefetch queue are included
 # in each query. Note that the estimated number of papers per author must
@@ -135,6 +136,36 @@ class ADS_Buddy:
         return [self._article_to_record(art) for art in articles]
     
     def _article_to_record(self, article):
+        # Not every ORCID ID field is returned for every document, and not
+        # every returned list has an entry for each author
+        for key in ('orcid_pub', 'orcid_user', 'orcid_other'):
+            if key not in article:
+                article[key] = []
+            article[key] = ['' if x == '-' else x for x in article[key]]
+            article[key] += \
+                [''] * (len(article['author']) - len(article[key]))
+        
+        # Choose one ORCID ID for each author
+        orcid_id = []
+        orcid_src = []
+        for op, ou, oo in zip(article['orcid_pub'],
+                              article['orcid_user'],
+                              article['orcid_other']):
+            if op != '':
+                orcid_id.append(op)
+                orcid_src.append(1)
+            elif ou != '':
+                orcid_id.append(ou)
+                orcid_src.append(2)
+            elif oo != '':
+                orcid_id.append(oo)
+                orcid_src.append(3)
+            else:
+                orcid_id.append('')
+                orcid_src.append(0)
+        
+        article['aff'] = ['' if x == '-' else x for x in article['aff']]
+        
         return DocumentRecord(
             bibcode=article["bibcode"],
             title=(unescape(article["title"][0])
@@ -155,7 +186,9 @@ class ADS_Buddy:
                             else 0),
             read_count=(article["read_count"]
                         if "read_count" in article
-                        else 0)
+                        else 0),
+            orcid_ids=orcid_id,
+            orcid_id_src=orcid_src
         )
     
     def add_authors_to_prefetch_queue(self, *authors):
