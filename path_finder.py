@@ -244,6 +244,13 @@ class PathFinder:
                     
                     neighbor.neighbors_toward_dest.remove(node)
                     neighbor.links_toward_dest.pop(node)
+        # Step three: Remove nodes that aren't on a path between src and dest
+        for name, node in self.nodes.items():
+            if node is self.src or node is self.dest:
+                continue
+            if (len(node.neighbors_toward_src) == 0
+                    or len(node.neighbors_toward_dest) == 0):
+                del self.nodes[name]
 
     @property
     def authors_to_expand(self):

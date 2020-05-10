@@ -86,6 +86,9 @@ class NameAwareDict(Generic[HasName]):
             for item in items:
                 values.append(item)
         return values
+    
+    def items(self):
+        return zip(self.keys(), self.values())
         
 
 
