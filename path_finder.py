@@ -17,7 +17,6 @@ class PathFinder:
     dest: PathNode
     excluded_names: NameAwareSet
     excluded_bibcodes: set
-    expanding_from_src: bool
     connecting_nodes: Set[PathNode]
     n_iterations: int
     
@@ -38,6 +37,13 @@ class PathFinder:
                 'The "destination" name is invalid.')
         src = ADSName.parse(src)
         dest = ADSName.parse(dest)
+        if src == dest:
+            raise PathFinderError(
+                "src_is_dest",
+                'The "source" and "destination" names are equal (or at least'
+                ' consistent). The distance is zero. APPA would like something'
+                ' more challenging, please.'
+            )
         if src.excludes_self or dest.excludes_self:
             raise PathFinderError(
                 "src_dest_invalid_lt_gt",
@@ -58,9 +64,8 @@ class PathFinder:
                     self.excluded_names.add(ADSName.parse(name))
         
         self.repository.notify_of_upcoming_author_request(src, dest)
-        self.expanding_from_src = True
-        self.authors_to_expand_src = [src]
-        self.authors_to_expand_src_next = []
+        self.authors_to_expand_src = []
+        self.authors_to_expand_src_next = [src]
         self.authors_to_expand_dest = []
         self.authors_to_expand_dest_next = [dest]
         
@@ -91,20 +96,41 @@ class PathFinder:
                 "dest_empty",
                 "No documents found for " + self.dest.name.original_name)
         
-        self.expanding_from_src = True
-        
         while True:
+            lb.d("Beginning new iteration")
+            lb.d(f"{len(self.authors_to_expand_src_next)} "
+                 "authors on src side")
+            lb.d(f"{len(self.authors_to_expand_dest_next)} "
+                 "authors on dest side")
+            if (len(self.authors_to_expand_src_next) == 0
+                    or len(self.authors_to_expand_dest_next) == 0):
+                raise PathFinderError(
+                    "no_authors_to_expand",
+                    "No connections possible after "
+                    f"{self.n_iterations} iterations")
+            # Of the two lists of authors we could expand, let's always
+            # choose the shortest. This tends to get us to a solution
+            # faster.
+            expanding_from_src = (len(self.authors_to_expand_src_next)
+                                  < len(self.authors_to_expand_dest_next))
+            lb.d("Expanding from "
+                 f"{'src' if expanding_from_src else 'dest'} side")
+            
             authors = (self.authors_to_expand_src
-                       if self.expanding_from_src
+                       if expanding_from_src
                        else self.authors_to_expand_dest)
             authors_next = (self.authors_to_expand_src_next
-                            if self.expanding_from_src
+                            if expanding_from_src
                             else self.authors_to_expand_dest_next)
+            authors.clear()
+            authors.extend(authors_next)
+            authors_next.clear()
+            
             self.repository.notify_of_upcoming_author_request(*authors)
             for expand_author in authors:
                 lb.d(f"Expanding author {expand_author}")
                 expand_node = self.nodes[expand_author]
-                expand_node_dist = expand_node.dist(self.expanding_from_src)
+                expand_node_dist = expand_node.dist(expanding_from_src)
                 record = self.repository.get_author_record(expand_author)
 
                 # Here's a tricky one. If "<=Last, F" is in the exclude
@@ -142,32 +168,38 @@ class PathFinder:
                         lb.on_coauthor_seen()
                         node = PathNode(name=coauthor)
                         self.nodes[coauthor] = node
-                        node.set_dist(expand_node_dist + 1, self.expanding_from_src)
-                        node.neighbors(self.expanding_from_src).add(expand_node)
+                        node.set_dist(expand_node_dist + 1, expanding_from_src)
+                        node.neighbors(expanding_from_src).add(expand_node)
+                        links = node.links(expanding_from_src)[expand_node]
+                        links.update(bibcodes)
                         authors_next.append(coauthor)
+                        continue
                     
-                    else:
-                        # lb.d(f"   Author exists in graph")
-                        node = self.nodes[coauthor]
-                        if (node.dist(self.expanding_from_src)
-                                <= expand_node_dist):
-                            # This node must have been encountered in a
-                            # previous expansion cycle. Ignore it.
-                            pass
-                        elif (node.dist(self.expanding_from_src)
-                                > expand_node_dist + 1):
-                            # This node is a viable next step along this chain.
-                            # That it already exists suggests it has multiple
-                            # chains of equal length connecting it to the
-                            # src or dest
-                            node.set_dist(expand_node_dist + 1, self.expanding_from_src)
-                            node.neighbors(self.expanding_from_src).add(expand_node)
-                            # lb.d(f"   Added viable step")
-                        if self.node_connects(node):
-                            self.connecting_nodes.add(node)
-                            lb.d(f"   Connecting author found!")
-                    links = node.links(self.expanding_from_src)[expand_node]
-                    links.update(bibcodes)
+                    # lb.d(f"   Author exists in graph")
+                    node = self.nodes[coauthor]
+                    if (node.dist(expanding_from_src)
+                            <= expand_node_dist):
+                        # This node is closer to the src/dest than we are
+                        # and must have been encountered in a
+                        # previous expansion cycle. Ignore it.
+                        pass
+                    elif (node.dist(expanding_from_src)
+                            > expand_node_dist):
+                        # We provide an equal-or-better route from the
+                        # src/dest than the route (if any) that this node
+                        # is aware of, meaning this node is a viable next
+                        # step along the chain from the src/dest through
+                        # us. That it already exists suggests it has
+                        # multiple chains of equal length connecting it to
+                        # the src or dest
+                        node.set_dist(expand_node_dist + 1, expanding_from_src)
+                        node.neighbors(expanding_from_src).add(expand_node)
+                        links = node.links(expanding_from_src)[expand_node]
+                        links.update(bibcodes)
+                        # lb.d(f"   Added viable step")
+                    if self.node_connects(node, expanding_from_src):
+                        self.connecting_nodes.add(node)
+                        lb.d(f"   Connecting author found!")
             lb.d("All expansions complete")
             self.n_iterations += 1
             if len(self.connecting_nodes) > 0:
@@ -177,39 +209,19 @@ class PathFinder:
                     "too_far",
                     "The distance is >8, which is quite far. Giving up.")
             else:
-                lb.d("Beginning new iteration")
-                lb.d(f"{len(self.authors_to_expand_src_next)} authors on src side")
-                lb.d(f"{len(self.authors_to_expand_dest_next)} authors on dest side")
-                if (len(self.authors_to_expand_src_next) == 0
-                        or len(self.authors_to_expand_dest_next) == 0):
-                    raise PathFinderError(
-                        "no_authors_to_expand",
-                        f"No connections possible after {self.n_iterations} iterations")
-                # Of the two lists of authors we could expand, let's always
-                # choose the shortest. This tends to get us to a solution
-                # faster.
-                if (len(self.authors_to_expand_src_next)
-                        < len(self.authors_to_expand_dest_next)):
-                    self.authors_to_expand_src = self.authors_to_expand_src_next
-                    self.authors_to_expand_src_next = []
-                    self.expanding_from_src = True
-                else:
-                    self.authors_to_expand_dest = self.authors_to_expand_dest_next
-                    self.authors_to_expand_dest_next = []
-                    self.expanding_from_src = False
-                lb.d(f"Expanding from {'src' if self.expanding_from_src else 'dest'} side")
+                continue
         self.produce_final_graph()
         lb.set_n_connections(len(self.connecting_nodes))
         lb.set_distance(self.src.dist_from_dest)
         lb.on_stop_path_finding()
     
-    def node_connects(self, node: PathNode):
+    def node_connects(self, node: PathNode, expanding_from_src: bool):
         if (len(node.neighbors_toward_src) > 0
                 and len(node.neighbors_toward_dest) > 0):
             return True
-        if self.expanding_from_src and node is self.dest:
+        if expanding_from_src and node is self.dest:
             return True
-        if not self.expanding_from_src and node is self.src:
+        if not expanding_from_src and node is self.src:
             return True
     
     def produce_final_graph(self):
@@ -266,11 +278,6 @@ class PathFinder:
             if (len(node.neighbors_toward_src) == 0
                     or len(node.neighbors_toward_dest) == 0):
                 del self.nodes[name]
-
-    @property
-    def authors_to_expand(self):
-        return self.authors_to_expand_src if self.expanding_from_src else \
-            self.authors_to_expand_dest
 
 
 class PathFinderError(RuntimeError):
