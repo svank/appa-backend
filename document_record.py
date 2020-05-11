@@ -54,9 +54,19 @@ class DocumentRecord:
             # There is no valid orcid id
             self.orcid_ids = []
             self.orcid_id_src = []
+        # In Firestore, integers cost us 8 bytes, while each character in a
+        # string costs us only 1 byte. So convert this list of ints to a
+        # string
+        self.orcid_id_src = ','.join(str(c) for c in self.orcid_id_src)
 
     def decompress(self):
         """Performs in-place the opposite of compress()"""
+        if len(self.orcid_id_src):
+            self.orcid_id_src = [int(c) for c in self.orcid_id_src.split(',')]
+        else:
+            # .split() on an empty string returns [''], but we want []
+            self.orcid_id_src = []
+        
         self.affils += [''] * (len(self.authors) - len(self.affils))
         self.orcid_ids += [''] * (len(self.authors) - len(self.orcid_ids))
         self.orcid_id_src += [0] * (len(self.authors) - len(self.orcid_id_src))
