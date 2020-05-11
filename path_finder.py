@@ -3,6 +3,7 @@ from typing import List, Set
 from ads_buddy import is_bibcode
 from ads_name import ADSName
 from author_record import AuthorRecord
+from cache_buddy import key_is_valid
 from log_buddy import lb
 from name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
@@ -27,11 +28,19 @@ class PathFinder:
     
     def __init__(self, src, dest, excluded_names=None):
         self.repository = Repository()
+        if not key_is_valid(src):
+            raise PathFinderError(
+                "invalid_char_in_name",
+                'The "source" name is invalid.')
+        if not key_is_valid(dest):
+            raise PathFinderError(
+                "invalid_char_in_name",
+                'The "destination" name is invalid.')
         src = ADSName.parse(src)
         dest = ADSName.parse(dest)
         if src.excludes_self or dest.excludes_self:
             raise PathFinderError(
-                "src_invalid_lt_gt",
+                "src_dest_invalid_lt_gt",
                 "'<' and '>' are invalid modifiers for the source and "
                 "destination authors and can only be used in the exclusions "
                 "list. Try '<=' or '>=' instead."
@@ -41,7 +50,9 @@ class PathFinder:
         if excluded_names is not None:
             for name in excluded_names:
                 name = name.strip()
-                if is_bibcode(name):
+                if name == '':
+                    continue
+                elif is_bibcode(name):
                     self.excluded_bibcodes.add(name)
                 else:
                     self.excluded_names.add(ADSName.parse(name))
@@ -161,6 +172,10 @@ class PathFinder:
             self.n_iterations += 1
             if len(self.connecting_nodes) > 0:
                 break
+            elif self.n_iterations > 8:
+                raise PathFinderError(
+                    "too_far",
+                    "The distance is >8, which is quite far. Giving up.")
             else:
                 lb.d("Beginning new iteration")
                 lb.d(f"{len(self.authors_to_expand_src_next)} authors on src side")

@@ -120,6 +120,9 @@ class ADS_Buddy:
             raise ADSRateLimitError(r.headers.get('X-RateLimit-Limit'), reset)
         
         r_data = r.json()
+        if "error" in r_data:
+            raise ADSError('ads_error', r_data['error']['msg'])
+            
         documents = self._articles_to_records(r_data['response']['docs'])
         
         if r_data['response']['numFound'] > len(documents) + params['start']:
@@ -232,3 +235,12 @@ class ADSRateLimitError(Exception):
     def __init__(self, limit, reset_time):
         super().__init__(f"ADS daily query quota of {limit} exceeded, reset at {reset_time}")
         self.reset_time = reset_time
+
+
+class ADSError(RuntimeError):
+    def __init__(self, key, message):
+        super().__init__(message)
+        self.key = key
+    
+    def __str__(self):
+        return "ADS says: " + super().__str__()

@@ -3,7 +3,7 @@ import json
 import traceback
 
 import cache_buddy
-from ads_buddy import ADSRateLimitError
+from ads_buddy import ADSError, ADSRateLimitError
 from log_buddy import lb
 from path_finder import PathFinder, PathFinderError
 from route_jsonifyer import to_json
@@ -20,7 +20,7 @@ def _find_route(request):
         pf = PathFinder(source, dest, exclude)
         pf.find_path()
         data = to_json(pf)
-    except PathFinderError as e:
+    except (ADSError, PathFinderError) as e:
         data = json.dumps({
             "error_key": e.key,
             "error_msg": str(e),

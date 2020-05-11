@@ -39,7 +39,20 @@ def refresh():
     backing_cache.refresh()
 
 
+def key_is_valid(name):
+    if name in ('.', '..', ',') or len(name) > 255 or len(name) == 0:
+        return False
+    if '<' in name and '>' in name:
+        return False
+    return all(
+        (c.isprintable() and c not in """_*/\;:?"|+[{]}()#$%^""" 
+         for c in name))
+
+
 def cache_document(document_record: DocumentRecord):
+    if not key_is_valid(document_record.bibcode):
+        raise RuntimeError(
+            "Invalid bibcode for caching: " + document_record.bibcode)
     _loaded_documents[document_record.bibcode] = document_record
     
     document_record = document_record.copy()
@@ -135,6 +148,8 @@ def _prepare_loaded_document(data):
 
 def cache_author(author_record: AuthorRecord):
     cache_key = str(author_record.name)
+    if not key_is_valid(cache_key):
+        raise RuntimeError("Invalid author name for caching: " + cache_key)
     _loaded_authors[cache_key] = author_record
     
     author_record = author_record.copy()
