@@ -43,14 +43,9 @@ class NameAwareDict(Generic[HasName]):
         for i, item in enumerate(items):
             if item.name == key:
                 items.pop(i)
+                if len(items) == 0:
+                    del self.items_by_last_name[key.last_name]
                 return
-    
-    def keys(self):
-        keys = []
-        for items in self.items_by_last_name.values():
-            for item in items:
-                keys.append(item.name)
-        return keys
     
     def __len__(self):
         count = 0
@@ -80,6 +75,13 @@ class NameAwareDict(Generic[HasName]):
             for item in items:
                 yield item.name
     
+    def keys(self):
+        keys = []
+        for items in self.items_by_last_name.values():
+            for item in items:
+                keys.append(item.name)
+        return keys
+    
     def values(self):
         values = []
         for items in self.items_by_last_name.values():
@@ -89,17 +91,28 @@ class NameAwareDict(Generic[HasName]):
     
     def items(self):
         return zip(self.keys(), self.values())
-        
 
 
-class NameAwareSet(NameAwareDict):
+class NameAwareSet:
+    def __init__(self):
+        self._dict = NameAwareDict()
+    
     def add(self, item: Name):
         if type(item) is str:
             item = ADSName.parse(item)
-        super(NameAwareSet, self).__setitem__(item, PathNode(name=item))
+        self._dict[item] = PathNode(name=item)
     
-    def __setitem__(self, key, value):
-        raise NotImplementedError()
+    def __iter__(self):
+        return iter(self._dict)
     
-    def __getitem__(self, key):
-        raise NotImplementedError()
+    def __len__(self):
+        return len(self._dict)
+    
+    def __contains__(self, item):
+        return item in self._dict
+
+    def __str__(self):
+        return str(self._dict.keys())
+
+    def __repr__(self):
+        return repr(self._dict.keys())
