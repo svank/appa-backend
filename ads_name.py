@@ -260,9 +260,9 @@ class ADSName:
     
     @property
     def level_of_detail(self):
-        score = 100 if self._last_name is not None else 0
+        score = 0
         for gn in self._given_names:
-            addition = 10 if len(gn) > 1 else 1
+            addition = 10 if len(gn) > 1 else 3
             score += addition
         return score
     

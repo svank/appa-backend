@@ -45,7 +45,6 @@ namesB = [
 
 
 class TestADSName(TestCase):
-    
     def test_equality(self):
         for data in namesB:
             nameB = ADSName.parse(data[0])
@@ -230,3 +229,19 @@ class TestADSName(TestCase):
                     self.assertEqual(name1, name2)
                 else:
                     self.assertNotEqual(name1, name2)
+    
+    def test_level_of_detail(self):
+        self.assertEqual(0,
+                         ADSName.parse("last").level_of_detail)
+        self.assertEqual(3,
+                         ADSName.parse("last, f").level_of_detail)
+        self.assertEqual(10,
+                         ADSName.parse("last, first").level_of_detail)
+        self.assertEqual(6,
+                         ADSName.parse("last, f m").level_of_detail)
+        self.assertEqual(13,
+                         ADSName.parse("last, f middle").level_of_detail)
+        self.assertEqual(20,
+                         ADSName.parse("last, first middle").level_of_detail)
+        self.assertEqual(23,
+                         ADSName.parse("last, first middle m").level_of_detail)
