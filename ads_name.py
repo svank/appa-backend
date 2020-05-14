@@ -3,6 +3,8 @@ from __future__ import annotations
 import itertools
 from typing import Tuple
 
+_name_cache = {}
+
 
 class ADSName:
     """Implements a singleton representation of names with appropriate equality
@@ -34,20 +36,23 @@ class ADSName:
     singleton nature is implemented through the ADSName.parse() method,
     which should be used to create ADSName instances.
     """
+    __slots__ = ['_last_name', '_given_names', '_require_exact',
+                 '_require_less_specific', '_require_more_specific',
+                 '_allow_same_specific', '_original_name', '_full_name',
+                 '_qualified_full_name', '_equality_cache']
     _last_name: str
     _given_names: Tuple[str]
     
-    _require_exact: bool = False
-    _require_less_specific: bool = False
-    _require_more_specific: bool = False
-    _allow_same_specific: bool = True
+    _require_exact: bool
+    _require_less_specific: bool
+    _require_more_specific: bool
+    _allow_same_specific: bool
     
     _original_name: str
     _full_name: str
     _qualified_full_name: str
     
     _equality_cache: {}
-    _name_cache = {}
     
     @classmethod
     def parse(cls, last_name, *given_names):
@@ -62,11 +67,12 @@ class ADSName:
         if type(last_name) == ADSName:
             return last_name
         key = (last_name, *given_names)
-        if key not in cls._name_cache:
+        try:
+            return _name_cache[key]
+        except KeyError:
             instance = ADSName(last_name, *given_names)
-            cls._name_cache[key] = instance
+            _name_cache[key] = instance
             return instance
-        return cls._name_cache[key]
     
     def __init__(self, last_name, *given_names):
         """Do not call this method directly. Instead, use ADSName.parse()."""
@@ -99,31 +105,47 @@ class ADSName:
                                   else n.lower()
                                   for n in self._given_names)
         
-        modifier_prefix = ""
         if self._last_name[0:2] in (">=", "=>"):
             self._require_more_specific = True
             self._allow_same_specific = True
+            self._require_less_specific = False
+            self._require_exact = False
             self._last_name = self._last_name[2:]
             modifier_prefix = ">="
         elif self._last_name[0:2] in ("<=", "=<"):
-            self._require_less_specific = True
+            self._require_more_specific = False
             self._allow_same_specific = True
+            self._require_less_specific = True
+            self._require_exact = False
             self._last_name = self._last_name[2:]
             modifier_prefix = "<="
         elif self._last_name.startswith(">"):
             self._require_more_specific = True
             self._allow_same_specific = False
+            self._require_less_specific = False
+            self._require_exact = False
             self._last_name = self._last_name[1:]
             modifier_prefix = ">"
         elif self._last_name.startswith("<"):
-            self._require_less_specific = True
+            self._require_more_specific = False
             self._allow_same_specific = False
+            self._require_less_specific = True
+            self._require_exact = False
             self._last_name = self._last_name[1:]
             modifier_prefix = "<"
         elif self._last_name.startswith("="):
+            self._require_more_specific = False
+            self._allow_same_specific = False
+            self._require_less_specific = False
             self._require_exact = True
             self._last_name = self._last_name[1:]
             modifier_prefix = "="
+        else:
+            self._require_more_specific = False
+            self._allow_same_specific = True
+            self._require_less_specific = False
+            self._require_exact = False
+            modifier_prefix = ""
         
         # This value is used in equality checking (a very frequent operation),
         # so it is memoized for speed. One goal here is to ensure consistent

@@ -1,3 +1,4 @@
+import functools
 import itertools
 import string
 from collections import defaultdict
@@ -60,23 +61,29 @@ def _store_bibcodes_for_node(node: PathNode, repo: Repository,
 def _insert_document_data(pairings, doc_data, repo):
     """Stores all required document data, and back fills indices"""
     for k1 in pairings.keys():
+        author1 = ADSName.parse(k1)
         for k2 in pairings[k1].keys():
-            author1 = ADSName.parse(k1)
             author2 = ADSName.parse(k2)
             replacement = []
             
             for bibcode in pairings[k1][k2]:
-                doc_record = repo.get_document(bibcode).asdict()
-                del doc_record['bibcode']
-                doc_data[bibcode] = doc_record
+                if bibcode in doc_data:
+                    doc_record = doc_data[bibcode]
+                else:
+                    doc_record = repo.get_document(bibcode).asdict()
+                    del doc_record['bibcode']
+                    doc_data[bibcode] = doc_record
                 
                 auth_1_idx = None
                 auth_2_idx = None
                 for i, author in enumerate(doc_record['authors']):
-                    if author1 == author and auth_1_idx is None:
+                    author = ADSName.parse(author)
+                    if auth_1_idx is None and author1 == author:
                         auth_1_idx = i
-                    if author2 == author and auth_2_idx is None:
+                    if auth_2_idx is None and author2 == author:
                         auth_2_idx = i
+                    if auth_1_idx is not None and auth_2_idx is not None:
+                        break
                 replacement.append((bibcode, auth_1_idx, auth_2_idx))
             pairings[k1][k2] = replacement
 
@@ -157,6 +164,7 @@ def _score_author_chain(chain, repo, pairings):
     return scores, paper_choices
 
 
+@functools.lru_cache(5000)
 def _score_author_chain_link(con1, con2, repo):
     """Scores the reliability of name matching between two papers
 
@@ -228,39 +236,41 @@ def _score_author_chain_link(con1, con2, repo):
     return detail_score + affil_score
 
 
+# Includes hyphen '-'
+chars_to_remove = {'.', ':', '-'}
+chars_to_remove.update(string.digits)
+# Includes en dash '–', em dash '—', & horizontal bar '―'
+chars_to_replace = {'|', ';', '@', '/', '–', '—', '―'}
+words_to_remove = {'the', 'of', 'a', 'an', 'and', '&'}
+words_to_replace = {
+    'inst': 'institute',
+    'u': 'university',
+    'uni': 'university',
+    'univ': 'university'
+}
+
+
+@functools.lru_cache(5000)
 def _process_affil(affil):
     affil = affil.lower()
     affil = affil.replace(" at ", ',')
     
-    # Includes hyphen '-'
-    remove_chars = {'.', ':', '-'}
-    # Includes en dash '–', em dash '—', & horizontal bar '―'
-    replace_chars = {'|', ';', '@', '/', '–', '—', '―'}
-    affil = ''.join(',' if c in replace_chars else c
+    affil = ''.join(',' if c in chars_to_replace else c
                     for c in affil
-                    if (c not in remove_chars
-                        and c not in string.digits
+                    if (c not in chars_to_remove
                         and c.isprintable()))
     
     chunks = affil.split(',')
     chunks = (chunk.strip() for chunk in chunks)
     
-    remove_words = {'the', 'of', 'a', 'an', 'and', '&'}
-    replacements = {
-        'inst': 'institute',
-        'u': 'university',
-        'uni': 'university',
-        'univ': 'university'
-    }
-    
     processed_chunks = []
     for chunk in chunks:
         words = []
         for word in chunk.split():
-            if word in remove_words:
+            if word in words_to_remove:
                 continue
-            if word in replacements:
-                word = replacements[word]
+            if word in words_to_replace:
+                word = words_to_replace[word]
             if len(word):
                 words.append(word)
         if len(words):
