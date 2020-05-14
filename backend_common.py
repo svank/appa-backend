@@ -1,6 +1,5 @@
 import hashlib
 import json
-import traceback
 
 import cache_buddy
 from ads_buddy import ADSError, ADSRateLimitError
@@ -20,7 +19,15 @@ def _find_route(request):
         pf = PathFinder(source, dest, exclude)
         pf.find_path()
         data = to_json(pf)
-    except (ADSError, PathFinderError) as e:
+    except PathFinderError as e:
+        data = json.dumps({
+            "error_key": e.key,
+            "error_msg": str(e),
+            "src": source,
+            "dest": dest
+        })
+    except ADSError as e:
+        lb.log_exception()
         data = json.dumps({
             "error_key": e.key,
             "error_msg": str(e),
@@ -28,6 +35,7 @@ def _find_route(request):
             "dest": dest
         })
     except ADSRateLimitError as e:
+        lb.log_exception()
         data = json.dumps({
             "error_key": "rate_limit",
             "error_msg": str(e),
@@ -36,7 +44,7 @@ def _find_route(request):
             "dest": dest
         })
     except:
-        lb.e("Uncaught exception: " + traceback.format_exc())
+        lb.log_exception()
         data = json.dumps({
             "error_key": "unknown",
             "error_msg": "Unexpected server error",

@@ -14,3 +14,20 @@ logging_handler.setFormatter(formatter)
 # For Cloud Logging:
 # from google.cloud import logging as cloud_logging
 # logging_handler = cloud_logging.Client().get_default_handler()
+
+# Extra actions when an error or an unhandled exception is logged
+def log_error_extra(): pass
+def log_exception_extra(): pass
+
+# For Cloud Error Reporting:
+# def log_error_extra(message):
+#     from google.cloud import error_reporting
+#     if message:
+#         error_reporting.Client().report(message)
+#     else:
+#         error_reporting.Client().report_exception()
+# 
+# 
+# def log_exception_extra():
+#     from google.cloud import error_reporting
+#     error_reporting.Client().report_exception()

@@ -3,7 +3,7 @@ import time
 from statistics import median
 
 import cache_buddy
-from local_config import logging_handler
+from local_config import logging_handler, log_error_extra, log_exception_extra
 from progress_record import ProgressRecord
 
 
@@ -55,9 +55,16 @@ class LogBuddy:
         
     def e(self, msg, **kwargs):
         self.logger.error(msg, **kwargs)
+        log_error_extra(msg)
         
     def c(self, msg, **kwargs):
         self.logger.critical(msg, **kwargs)
+        log_error_extra(msg)
+    
+    def log_exception(self):
+        import traceback
+        log_exception_extra()
+        self.logger.error(traceback.format_exc())
     
     def set_log_level(self, level):
         self.logger.setLevel(level)

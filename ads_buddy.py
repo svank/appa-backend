@@ -116,7 +116,6 @@ class ADS_Buddy:
             reset = time.strftime(
                 "%Y-%m-%d %H:%M:%S UTC",
                 time.gmtime(int(r.headers.get('X-RateLimit-Reset', 0))))
-            lb.e("ADS quota exceeded, reset at " + reset)
             raise ADSRateLimitError(r.headers.get('X-RateLimit-Limit'), reset)
         
         r_data = r.json()
