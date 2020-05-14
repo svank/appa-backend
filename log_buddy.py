@@ -40,6 +40,7 @@ class LogBuddy:
         self.time_preparing_response = -1
         self.start_time = None
         self.stop_time = None
+        self.path_finding_complete = False
         
         self.progress_key = None
         self.last_cache_update = 0
@@ -89,7 +90,6 @@ class LogBuddy:
     
     def on_coauthor_seen(self, n=1):
         self.n_coauthors_seen += n
-        self.update_progress_cache()
     
     def on_network_complete(self, time):
         self.n_network_queries += 1
@@ -102,6 +102,8 @@ class LogBuddy:
     
     def on_stop_path_finding(self):
         self.stop_time = time.time()
+        self.path_finding_complete = True
+        self.update_progress_cache()
     
     def on_result_prepared(self, time):
         self.time_preparing_response = time
@@ -150,7 +152,8 @@ class LogBuddy:
             cache_buddy.cache_progress_data(
                 ProgressRecord(n_ads_queries=self.n_network_queries,
                                n_authors_queried=self.n_authors_queried,
-                               n_docs_loaded=self.n_docs_queried),
+                               n_docs_queried=self.n_docs_queried,
+                               path_finding_complete=self.path_finding_complete),
                 self.progress_key
             )
 

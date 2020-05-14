@@ -6,7 +6,8 @@ import time
 class ProgressRecord:
     n_ads_queries: int
     n_authors_queried: int
-    n_docs_loaded: int
+    n_docs_queried: int
+    path_finding_complete: bool
     timestamp: int = -1
     
     def __post_init__(self):
