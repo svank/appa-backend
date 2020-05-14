@@ -48,8 +48,11 @@ class TestRecordCompression(TestCase):
             
             uncompressed_appears_as = copy.deepcopy(record.appears_as)
             uncompressed_coauthors = copy.deepcopy(record.coauthors)
-            
+
+            # Make sure the copy is independent of the original
+            native_copy = record.copy()
             record.compress()
+            self.assertNotEqual(record.asdict(), native_copy.asdict())
 
             for alias in record.appears_as:
                 self.assertEqual(len(record.appears_as[alias].split(',')),
@@ -62,6 +65,11 @@ class TestRecordCompression(TestCase):
             # The source record in mock_backing_cache is compressed. Check that
             # it matches the re-compressed record
             self.assertEqual(raw_data, record.asdict())
+
+            # Make sure the copy is independent of the original
+            native_copy = record.copy()
+            record.decompress()
+            self.assertNotEqual(record.asdict(), native_copy.asdict())
 
     def test_document_record_compression(self):
         for document, raw_data in mock_backing_cache.documents.items():
@@ -80,8 +88,11 @@ class TestRecordCompression(TestCase):
             uncompressed_affils = copy.deepcopy(record.affils)
             uncompressed_orcid_ids = copy.deepcopy(record.orcid_ids)
             uncompressed_orcid_srcs = copy.deepcopy(record.orcid_id_src)
-            
+
+            # Make sure the copy is independent of the original
+            native_copy = record.copy()
             record.compress()
+            self.assertNotEqual(record.asdict(), native_copy.asdict())
             
             # Ensure only empty items are removed
             for affil in uncompressed_affils[len(record.affils):]:
@@ -94,3 +105,8 @@ class TestRecordCompression(TestCase):
             # The source record in mock_backing_cache is compressed. Check that
             # it matches the re-compressed record
             self.assertEqual(raw_data, record.asdict())
+
+            # Make sure the copy is independent of the original
+            native_copy = record.copy()
+            record.decompress()
+            self.assertNotEqual(record.asdict(), native_copy.asdict())

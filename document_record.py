@@ -27,7 +27,27 @@ class DocumentRecord:
         return DocumentRecord(**self.asdict())
     
     def asdict(self):
-        return dataclasses.asdict(self)
+        # dataclasses.asdict makes a deep copy and is a bit slow doing it.
+        # It's faster to generate our own dict. Everything is either immutable
+        # or a list of immutables, so if we just make fresh list instances
+        # we still get the deep-copy semantics w/o a speed penalty.
+        return {
+            'bibcode': self.bibcode,
+            'title': self.title,
+            'authors': list(self.authors),
+            'affils': list(self.affils),
+            'doctype': self.doctype,
+            'keywords': list(self.keywords),
+            'publication': self.publication,
+            'pubdate': self.pubdate,
+            'citation_count': self.citation_count,
+            'read_count': self.read_count,
+            'orcid_ids': list(self.orcid_ids),
+            'orcid_id_src': (self.orcid_id_src
+                             if type(self.orcid_id_src) == str
+                             else list(self.orcid_id_src)),
+            'timestamp': self.timestamp,
+        }
 
     def compress(self):
         """Performs an in-place compression of data.
