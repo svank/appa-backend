@@ -72,6 +72,7 @@ def _insert_document_data(pairings, doc_data, repo):
                 else:
                     doc_record = repo.get_document(bibcode).asdict()
                     del doc_record['bibcode']
+                    del doc_record['timestamp']
                     doc_data[bibcode] = doc_record
                 
                 auth_1_idx = None
