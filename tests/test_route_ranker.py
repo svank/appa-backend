@@ -208,12 +208,12 @@ class TestRouteRanker(TestCase):
 
         for src, dest, exclude, expected_chain in [
             ("Author, A", "Author, G", [],
-             [['Author, A', 'Author, Bbb', 'Author, G'],
-              ['Author, A', 'Author, Eee E.', 'Author, G']]),
+             [['Author, Aaa', 'Author, B.', 'Author, G.'],
+              ['Author, Aaa', 'Author, Eee E.', 'Author, G.']]),
             
             ("Author, A", "Author, G",  ['paperAB2'],
-             [['Author, A', 'Author, Eee E.', 'Author, G'],
-              ['Author, A', 'Author, Bbb', 'Author, G']]),
+             [['Author, Aaa', 'Author, Eee E.', 'Author, G.'],
+              ['Author, A.', 'Author, Bbb', 'Author, G.']]),
             
             ("Author, D.", "Author, I.", [],
              [['Author, D.', 'Author, J. J.', 'Author, I.']]),
@@ -242,8 +242,8 @@ class TestRouteRanker(TestCase):
         scored_chains, doc_data = run_pf(source, dest, exclude)
         
         self.assertEqual([chain for _, chain, _ in scored_chains],
-                         [['Author, A', 'Author, Bbb', 'Author, G'],
-                          ['Author, A', 'Author, Eee E.', 'Author, G']])
+                         [['Author, Aaa', 'Author, B.', 'Author, G.'],
+                          ['Author, Aaa', 'Author, Eee E.', 'Author, G.']])
         
         self.assertEqual([score for score, _, _ in scored_chains],
                          [.84, .1 * 13/20])
@@ -271,8 +271,8 @@ class TestRouteRanker(TestCase):
         scored_chains, doc_data = run_pf(source, dest, exclude)
         
         self.assertEqual([chain for _, chain, _ in scored_chains],
-                         [['Author, A', 'Author, Eee E.', 'Author, G'],
-                          ['Author, A', 'Author, Bbb', 'Author, G']])
+                         [['Author, Aaa', 'Author, Eee E.', 'Author, G.'],
+                          ['Author, A.', 'Author, Bbb', 'Author, G.']])
         
         self.assertEqual([score for score, _, _ in scored_chains],
                          [.1 * 13/20, .1 * 10/20])

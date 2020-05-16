@@ -115,19 +115,26 @@ def _rank_author_chains(chains: [], repo, pairings):
         # titles. `paper_choices` looks like:
         # ( [ (bibcode, 0, 1), (bibcode, 0, 1), (bibcode, 0, 1) ],
         #   [ (bibcode, 0, 1), (bibcode, 0, 1), (bibcode, 0, 1) ] )
+        # Each column represents a chain link (A -> B)'
+        # Each row gives you one paper for each chain link
         # We want to replace each inner tuple with a paper title
         titles = [[repo.get_document(bibcode).title
                    for bibcode, _, _ in paper_choice]
                   for paper_choice in paper_choices]
+        
+        # This should happen here, since later we use author names
+        # as a secondary key for sorting.
+        new_chain = normalize_author_names(paper_choices, repo)
+        
         # Negate scores so we have a sort that's descending by actual score
         # and then ascending by title
         intermed = zip([-s for s in scores], titles, paper_choices)
         intermed = sorted(intermed)
         scores, _, paper_choices = zip(*intermed)
-        items.append((scores[0], chain, paper_choices))
+        items.append((scores[0], new_chain, paper_choices))
     
     # The scores are still negative, so now we get a sort that's descending by
-    # acutal score and then ascending by author names.
+    # actual score and then ascending by author names.
     intermed = sorted(items)
     return [(-score, chain, pc) for score, chain, pc in intermed]
 
@@ -277,3 +284,26 @@ def _process_affil(affil):
         if len(words):
             processed_chunks.append(" ".join(words))
     return processed_chunks
+
+
+def normalize_author_names(paper_choices, repo):
+    """Re-builds a chain with names representative of the linking papers.
+    
+    Builds a new chain where each name is as seen in the top paper choice
+    for that chain link. Names that aren't the first or last in the chain
+    appear on two chosen papers, and of those two versions of the name, the
+    least specific is chosen."""
+    new_chain = []
+    for i, pc in enumerate(zip(*paper_choices)):
+        bibcode, a1idx, a2idx = pc[0]
+        doc = repo.get_document(bibcode)
+        a1name = doc.authors[a1idx]
+        a2name = doc.authors[a2idx]
+        if (i != 0
+                and ADSName.parse(a1name).level_of_detail
+                < ADSName.parse(new_chain[-1]).level_of_detail):
+            new_chain[-1] = a1name
+        elif i == 0:
+            new_chain.append(a1name)
+        new_chain.append(a2name)
+    return new_chain

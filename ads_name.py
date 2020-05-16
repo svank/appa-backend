@@ -339,3 +339,16 @@ class ADSName:
     @property
     def qualified_full_name(self):
         return self._qualified_full_name
+    
+    @property
+    def without_modifiers(self):
+        return ADSName.parse(self.full_name)
+    
+    @property
+    def modifiers(self):
+        out = ""
+        name = self._qualified_full_name
+        while len(name) > 0 and name[0] in ('=', '<', '>'):
+            out += name[0]
+            name = name[1:]
+        return out
