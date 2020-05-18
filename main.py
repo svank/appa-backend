@@ -3,7 +3,7 @@ Entry points for Cloud Functions. For local usage, see appa.py
 """
 
 import cache_buddy
-from backend_common import _find_route, _get_progress
+from backend_common import _find_route
 from log_buddy import lb
 
 # Cloud Function responses cannot be larger than 10 MiB. If our response
@@ -38,10 +38,6 @@ def find_route(request):
             CLOUD_STORAGE_BUCKET_NAME, blob_name)}
         return json.dumps(response), code, headers
     return data, code, headers
-
-
-def get_progress(request):
-    return _get_progress(request)
 
 
 def clean_cache(request):

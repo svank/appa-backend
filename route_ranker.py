@@ -4,6 +4,7 @@ import string
 from collections import defaultdict
 
 from ads_name import ADSName
+from log_buddy import lb
 from path_finder import PathFinder
 from path_node import PathNode
 from repository import Repository
@@ -15,8 +16,10 @@ def process_pathfinder(path_finder: PathFinder):
     pairings, all_bibcodes = _store_bibcodes_for_node(path_finder.src, repo)
     
     doc_data = {}
+    lb.set_n_docs_relevant(len(all_bibcodes))
     repo.notify_of_upcoming_document_request(*all_bibcodes)
     _insert_document_data(pairings, doc_data, repo)
+    lb.update_progress_cache(force=True)
     
     chains = _build_author_chains(path_finder.src)
     scored_chains = _rank_author_chains(chains, repo, pairings)
@@ -71,6 +74,7 @@ def _insert_document_data(pairings, doc_data, repo):
                     doc_record = doc_data[bibcode]
                 else:
                     doc_record = repo.get_document(bibcode).asdict()
+                    lb.on_doc_loaded()
                     del doc_record['bibcode']
                     del doc_record['timestamp']
                     doc_data[bibcode] = doc_record

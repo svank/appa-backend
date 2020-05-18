@@ -1,4 +1,5 @@
 .gitignore
+.gcloudignore
 appa.py
 appa_web_backend.py
 cache_fs.py
@@ -12,6 +13,7 @@ venv
 
 stats
 firestore_listener
+progress_relay
 
 .git
 .idea

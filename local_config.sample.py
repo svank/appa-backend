@@ -1,6 +1,10 @@
 # The module whose name is in this string will be imported and used
 backing_cache = "cache_fs"
 
+# For firestore:
+# backing_cache = "cache_firestore"
+# relay_token = "token_here"
+
 ADS_TOKEN = "token_here"
 
 CLOUD_STORAGE_BUCKET_NAME = ""
@@ -26,8 +30,8 @@ def log_exception_extra(): pass
 #         error_reporting.Client().report(message)
 #     else:
 #         error_reporting.Client().report_exception()
-# 
-# 
+#
+#
 # def log_exception_extra():
 #     from google.cloud import error_reporting
 #     error_reporting.Client().report_exception()

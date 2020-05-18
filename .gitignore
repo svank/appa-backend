@@ -6,3 +6,5 @@ stats/stats_config.py
 .idea
 venv
 __pycache__
+
+*.swp

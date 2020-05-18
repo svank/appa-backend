@@ -7,7 +7,7 @@ app = Flask(__name__)
 lb.set_log_level(lb.INFO)
 
 
-@app.route('/find_route')
+@app.route('/find_route', methods=['GET', 'POST'])
 def find_route():
     return _find_route(request)
 

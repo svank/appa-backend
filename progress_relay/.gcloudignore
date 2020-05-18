@@ -1,0 +1,13 @@
+.gcloudignore
+.gitignore
+
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.swp
+
+localconfig_sample.go

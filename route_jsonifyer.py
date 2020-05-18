@@ -13,8 +13,6 @@ def to_json(path_finder: PathFinder):
     
     scored_chains, doc_data = route_ranker.process_pathfinder(path_finder)
     
-    lb.on_doc_returned(len(doc_data))
-    
     # scored_chains is a list. Each item is a tuple containing:
     # 1) The name-match confidence score for a unique authorship chain
     # 2) The chain itself (a list of names)

@@ -98,7 +98,7 @@ def load_authors(keys: [str]):
     return [load_author(key) for key in keys]
 
 
-def store_progress_data(data: str, key: str):
+def store_progress_data(data: dict, key: str):
     fname = os.path.join(PROGRESS_CACHE_SUBDIR, key)
     data = json.dumps(data, check_circular=False)
     try:

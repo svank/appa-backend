@@ -1,9 +1,11 @@
 import json
 import time
 
+import requests
 from google.cloud import firestore
 
 import cache_buddy
+import local_config
 
 DOC_CACHE_COLLECTION = "documents"
 AUTHOR_CACHE_COLLECTION = "authors"
@@ -127,25 +129,33 @@ def load_authors(keys: [str]):
     return result
 
 
-def store_progress_data(data: str, key: str):
-    doc_ref = db.collection(PROGRESS_CACHE_COLLECTION).document(key)
-    _set(doc_ref, data)
+def store_progress_data(data: dict, key: str):
+    data = json.dumps(data, check_circular=False, separators=(',', ':'))
+    try:
+        requests.post(
+            local_config.relay_url,
+            data={
+                'key': key,
+                'value': data,
+                'token': local_config.relay_token
+            },
+            # Large first value to ensure a connection is made, low second
+            # value to not wait for a response
+            timeout=(1, 0.001)
+        )
+    except requests.Timeout:
+        pass
 
 
 def delete_progress_data(key: str):
-    doc_ref = db.collection(PROGRESS_CACHE_COLLECTION).document(key)
-    _delete(doc_ref)
+    pass
 
 
 def get_progress_cache_contents():
-    return db.collection(PROGRESS_CACHE_COLLECTION).list_documents()
+    return []
 
 
 def load_progress_data(key: str):
-    doc_ref = db.collection(PROGRESS_CACHE_COLLECTION).document(key)
-    data = doc_ref.get()
-    if data.exists:
-        return data.to_dict()
     raise cache_buddy.CacheMiss(key)
 
 
@@ -171,17 +181,6 @@ def clear_stale_data(authors=True, documents=True, progress=True):
                 i += 1
                 _delete(doc_collection.document(doc.id))
             cache_buddy.log_buddy.lb.i(f"Cleared {i} documents")
-        
-        if progress:
-            progress_thresh = time.time() - cache_buddy.MAXIMUM_PROGRESS_AGE
-            progress_collection = db.collection(PROGRESS_CACHE_COLLECTION)
-            progress_query = progress_collection.where(
-                'timestamp', '<', progress_thresh)
-            i = 0
-            for doc in progress_query.stream():
-                i += 1
-                _delete(progress_collection.document(doc.id))
-            cache_buddy.log_buddy.lb.i(f"Cleared {i} progress parcels")
 
 
 def _set(doc_ref, data):

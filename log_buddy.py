@@ -21,9 +21,11 @@ class LogBuddy:
     
     def set_progress_key(self, key):
         self.progress_key = key
+        self.update_progress_cache(force=True)
     
     def reset_stats(self):
-        self.n_docs_returned = 0
+        self.n_docs_loaded = 0
+        self.n_docs_relevant = 0
         
         self.n_authors_queried = 0
         self.n_docs_queried = 0
@@ -74,8 +76,12 @@ class LogBuddy:
         self.n_docs_queried += n
         self.update_progress_cache()
     
-    def on_doc_returned(self, n=1):
-        self.n_docs_returned += n
+    def on_doc_loaded(self, n=1):
+        self.n_docs_loaded += n
+        self.update_progress_cache()
+    
+    def set_n_docs_relevant(self, n):
+        self.n_docs_relevant = n
         self.update_progress_cache()
     
     def on_doc_load_timed(self, time):
@@ -103,7 +109,6 @@ class LogBuddy:
     def on_stop_path_finding(self):
         self.stop_time = time.time()
         self.path_finding_complete = True
-        self.update_progress_cache()
     
     def on_result_prepared(self, time):
         self.time_preparing_response = time
@@ -126,8 +131,8 @@ class LogBuddy:
         self.i(f"{self.n_connections} connections found w/ distance {self.distance}!")
         self.i(f"{self.n_docs_queried} docs and {self.n_authors_queried} authors queried")
         self.i(f"{self.n_coauthors_seen} coauthor names seen")
-        if self.n_docs_returned >= 0:
-            self.i(f"{self.n_docs_returned} docs returned")
+        if self.n_docs_relevant >= 0:
+            self.i(f"{self.n_docs_relevant} docs returned")
         if len(self.time_waiting_network) == 0:
             self.i("0 network queries")
         else:
@@ -144,15 +149,18 @@ class LogBuddy:
         self.i(f"Search took {self.get_search_time():.2f} s")
         self.i(f"Response prepared in {self.time_preparing_response:.2f} s")
     
-    def update_progress_cache(self):
+    def update_progress_cache(self, force=False):
         now = time.time()
         if (self.progress_key is not None
-                and now - self.last_cache_update > 1):
+                and (now - self.last_cache_update > .25
+                     or force)):
             self.last_cache_update = now
             cache_buddy.cache_progress_data(
                 ProgressRecord(n_ads_queries=self.n_network_queries,
                                n_authors_queried=self.n_authors_queried,
                                n_docs_queried=self.n_docs_queried,
+                               n_docs_relevant=self.n_docs_relevant,
+                               n_docs_loaded=self.n_docs_loaded,
                                path_finding_complete=self.path_finding_complete),
                 self.progress_key
             )

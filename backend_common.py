@@ -1,4 +1,3 @@
-import hashlib
 import json
 
 import cache_buddy
@@ -10,12 +9,13 @@ from route_jsonifyer import to_json
 
 def _find_route(request):
     source, dest, exclude = parse_url_args(request)
-    progress_key = make_progress_key(source, dest, exclude)
-    lb.set_progress_key(progress_key)
-    lb.i(f"find_route invoked for src:{source}, dest:{dest}, "
-         f"excl:{';'.join(sorted(exclude))}, pkey:{progress_key}")
-    
     try:
+        progress_key = request.data.decode()
+        lb.i(f"find_route invoked for src:{source}, dest:{dest}, "
+             f"excl:{';'.join(sorted(exclude))}, pkey:{progress_key}")
+        lb.reset_stats()
+        lb.set_progress_key(progress_key)
+        
         pf = PathFinder(source, dest, exclude)
         pf.find_path()
         data = to_json(pf)
@@ -58,19 +58,13 @@ def _find_route(request):
 
 
 def _get_progress(request):
-    source, dest, exclude = parse_url_args(request)
-    key = make_progress_key(source, dest, exclude)
+    key = request.args.get('key')
     try:
         data = cache_buddy.load_progress_data(key)
         response = json.dumps(data.asdict())
     except:
         response = json.dumps({"error": True})
     return response, 200, {'Access-Control-Allow-Origin': '*'}
-
-
-def make_progress_key(source, dest, exclude):
-    string = f"src={source}&dest={dest}&exclusions={';'.join(sorted(exclude))}"
-    return hashlib.sha256(string.encode()).hexdigest()
 
 
 def parse_url_args(request):
