@@ -106,7 +106,8 @@ class ADS_Buddy:
         t_start = time.time()
         r = requests.get("https://api.adsabs.harvard.edu/v1/search/query",
                          params=params,
-                         headers={"Authorization": f"Bearer {ADS_TOKEN}"})
+                         headers={"Authorization": f"Bearer {ADS_TOKEN}"},
+                         timeout=(6.05, 6 * n_authors))
         t_elapsed = time.time() - t_start
         lb.on_network_complete(t_elapsed)
         if t_elapsed > 2 * n_authors:
