@@ -109,6 +109,7 @@ class LogBuddy:
     def on_stop_path_finding(self):
         self.stop_time = time.time()
         self.path_finding_complete = True
+        self.update_progress_cache(force=True)
     
     def on_result_prepared(self, time):
         self.time_preparing_response = time
