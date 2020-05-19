@@ -3,6 +3,8 @@ from __future__ import annotations
 import itertools
 from typing import Tuple
 
+from unidecode import unidecode_expect_ascii as unidecode
+
 _name_cache = {}
 
 
@@ -100,10 +102,11 @@ class ADSName:
             else:
                 self._given_names = tuple()
         
-        self._last_name = self._last_name.lower()
-        self._given_names = tuple(n[0].lower() if len(n.rstrip('.')) == 1
-                                  else n.lower()
-                                  for n in self._given_names)
+        self._last_name = unidecode(self._last_name).lower().strip()
+        gn = (unidecode(n).lower().strip() for n in self._given_names)
+        self._given_names = tuple(n[0] if len(n.rstrip('.')) == 1
+                                  else n
+                                  for n in gn)
         
         if self._last_name[0:2] in (">=", "=>"):
             self._require_more_specific = True

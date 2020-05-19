@@ -10,3 +10,4 @@ google-cloud-error-reporting
 # Ensure we use the version provided by Cloud Functions, per
 # https://cloud.google.com/functions/docs/writing/specifying-dependencies-python#pre-installed_packages
 requests==2.21.0
+unidecode
