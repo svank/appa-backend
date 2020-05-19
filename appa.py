@@ -13,5 +13,5 @@ if __name__ == "__main__":
     except PathFinderError as e:
         lb.e(e)
     else:
-        lb.log_stats()
         print(RoutePrinter(pf))
+        lb.log_stats()

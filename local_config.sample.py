@@ -20,7 +20,7 @@ logging_handler.setFormatter(formatter)
 # logging_handler = cloud_logging.Client().get_default_handler()
 
 # Extra actions when an error or an unhandled exception is logged
-def log_error_extra(): pass
+def log_error_extra(msg): pass
 def log_exception_extra(): pass
 
 # For Cloud Error Reporting:
