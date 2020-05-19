@@ -87,9 +87,13 @@ class ADS_Buddy:
         # authors, but it's also important to support the "<" and ">"
         # specificity selectors for author names
         for document in documents:
+            matched = False
             for author in document.authors:
                 if author in author_records:
                     author_records[author].documents.append(document.bibcode)
+                    matched = True
+            if not matched:
+                lb.e("ADS Buddy did not find a match for " + document.bibcode)
         
         for author_record in author_records.values():
             # Remove any duplicate document listings
