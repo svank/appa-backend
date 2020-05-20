@@ -103,10 +103,10 @@ class ADSName:
                 self._given_names = tuple()
         
         self._last_name = unidecode(self._last_name).lower().strip()
-        gn = (unidecode(n).lower().strip() for n in self._given_names)
-        self._given_names = tuple(n[0] if len(n.rstrip('.')) == 1
-                                  else n
-                                  for n in gn)
+        # 1923CMWCI.256....1D is one example of a paper with a period at the
+        # end of the author name. So special case, I guess?
+        self._given_names = tuple(unidecode(n).lower().strip().strip('.')
+                                  for n in self._given_names)
         
         if self._last_name[0:2] in (">=", "=>"):
             self._require_more_specific = True
