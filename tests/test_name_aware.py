@@ -4,11 +4,16 @@ from ads_name import ADSName
 from name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
 
-equal_names = [ADSName.parse(n) for n in ("Murray, S.",
-                                          "Murray, Stephen",
-                                          "Murray, Stephen S")]
-diff_names  = [ADSName.parse(n) for n in ("Murray, Eva",
-                                          "Burray, Eva")]
+equal_names_str = ["Murray, S.",
+                   "Murray, Stephen",
+                   "Murray, Stephen S",
+                   "Murray, Stephen Steve"]
+equal_names = [ADSName.parse(n) for n in equal_names_str]
+
+diff_names_str = ["Murray, Eva",
+                  "Burray, Eva",
+                  "Murray, Eric"]
+diff_names = [ADSName.parse(n) for n in diff_names_str]
 
 
 class TestNameAwareDict(TestCase):
@@ -161,15 +166,27 @@ class TestNameAwareSet(TestCase):
         
         nas.add(equal_names[0])
 
-        for name in diff_names:
+        for name, name_str in zip(diff_names, diff_names_str):
             self.assertNotIn(name, nas)
+            self.assertNotIn(name_str, nas)
             nas.add(name)
+            self.assertIn(name, nas)
+            self.assertIn(name_str, nas)
         
-        for name in equal_names:
+        for name, name_str in zip(equal_names, equal_names_str):
             self.assertIn(name, nas)
-            
-        for name in diff_names:
+            self.assertIn(name_str, nas)
+
+        for name, name_str in zip(diff_names, diff_names_str):
             self.assertIn(name, nas)
+            self.assertIn(name_str, nas)
+        
+        nas2 = NameAwareSet()
+        
+        for name, name_str in zip(diff_names, diff_names_str):
+            nas2.add(name_str)
+            self.assertIn(name, nas2)
+            self.assertIn(name_str, nas2)
     
     def test_len(self):
         nad = NameAwareSet()
@@ -183,3 +200,18 @@ class TestNameAwareSet(TestCase):
             nad.add(name)
         
         self.assertEqual(len(nad), len(diff_names) + 1)
+    
+    def test_values(self):
+        nas = NameAwareSet()
+        
+        for name in diff_names_str:
+            nas.add(name)
+        
+        self.assertEqual(sorted(nas.values()),
+                         sorted(diff_names_str))
+        
+        for name in equal_names_str:
+            nas.add(name)
+        
+        self.assertEqual(sorted(nas.values()),
+                         sorted([equal_names_str[-1], *diff_names_str]))

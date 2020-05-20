@@ -7,8 +7,17 @@ from ads_name import ADSName
 from author_record import AuthorRecord
 from path_node import PathNode
 
+
+class ContainerWithName:
+    def __init__(self, value):
+        self.orig_value = value
+        if type(value) is not ADSName:
+            value = ADSName.parse(value)
+        self.name = value
+
+
 Name = Union[str, ADSName]
-HasName = TypeVar("HasName", PathNode, AuthorRecord)
+HasName = TypeVar("HasName", PathNode, AuthorRecord, ContainerWithName)
 
 
 class NameAwareDict(Generic[HasName]):
@@ -98,9 +107,7 @@ class NameAwareSet:
         self._dict = NameAwareDict()
     
     def add(self, item: Name):
-        if type(item) is str:
-            item = ADSName.parse(item)
-        self._dict[item] = PathNode(name=item)
+        self._dict[item] = ContainerWithName(item)
     
     def __iter__(self):
         return iter(self._dict)
@@ -116,3 +123,6 @@ class NameAwareSet:
 
     def __repr__(self):
         return repr(self._dict.keys())
+    
+    def values(self):
+        return [n.orig_value for n in self._dict.values()]
