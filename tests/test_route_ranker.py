@@ -43,7 +43,7 @@ class TestRouteRanker(TestCase):
         # IDs _don't_ match
         con1 = ('paperAB2', None, 0)
         con2 = ('paperBCG', 0, None)
-        self.assertGreater(0, route_ranker._score_author_chain_link(
+        self.assertIsNone(route_ranker._score_author_chain_link(
             con1, con2, self.repository))
         
         #
@@ -164,7 +164,7 @@ class TestRouteRanker(TestCase):
         chain = ['Author, A.', 'Author, Bbb', 'Author, G.']
         scores, _ = route_ranker._score_author_chain(
             chain, self.repository, pairings)
-        self.assertEqual(scores, (.84, .05, .05, -999999))
+        self.assertEqual(scores, (.84, .05, .05))
         
         chain = ['Author, A.', 'Author, Eee E.', 'Author, G.']
         scores, _ = route_ranker._score_author_chain(
@@ -192,8 +192,7 @@ class TestRouteRanker(TestCase):
         test_scores, _ = route_ranker._score_author_chain(
             chain, self.repository, pairings)
         self.assertEqual(test_scores,
-                         (0.855, 0.855, 0.065, 0.065,
-                          0.03, 0.03, -999998.985, -999998.985))
+                         (0.855, 0.855, 0.065, 0.065, 0.03, 0.03))
     
     def test_get_ordered_chains(self):
         # First rep: Author, B. has an ORCID id match and so that route should
@@ -252,8 +251,7 @@ class TestRouteRanker(TestCase):
         self.assertEqual(paper_choices[0],
                          ((('paperAB2', 1, 0), ('paperBG', 0, 1)),
                           (('paperAB', 0, 1), ('paperBG', 0, 1)),
-                          (('paperAB', 0, 1), ('paperBCG', 0, 2)),
-                          (('paperAB2', 1, 0), ('paperBCG', 0, 2))))
+                          (('paperAB', 0, 1), ('paperBCG', 0, 2))))
         self.assertEqual(paper_choices[1],
                          ((('paperAE', 0, 1), ('paperEG', 0, 1)),))
         

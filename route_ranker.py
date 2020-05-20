@@ -24,6 +24,13 @@ def process_pathfinder(path_finder: PathFinder):
     chains = _build_author_chains(path_finder.src)
     scored_chains = _rank_author_chains(chains, repo, pairings)
     
+    if scored_chains is None:
+        # TODO: do better
+        raise AllPathsInvalid(f"src: {path_finder.src.name}"
+                              f" dest: {path_finder.dest.name}"
+                              f" excln: {path_finder.excluded_names}"
+                              f" exclb: {path_finder.excluded_bibcodes}")
+    
     return scored_chains, doc_data
 
 
@@ -114,6 +121,8 @@ def _rank_author_chains(chains: [], repo, pairings):
     items = []
     for chain in chains:
         scores, paper_choices = _score_author_chain(chain, repo, pairings)
+        if scores is None:
+            continue
         # We'd like papers to be sorted by score descending, and then
         # alphabetically by title as the tie-breaker. So here we look up those
         # titles. `paper_choices` looks like:
@@ -136,6 +145,11 @@ def _rank_author_chains(chains: [], repo, pairings):
         intermed = sorted(intermed)
         scores, _, paper_choices = zip(*intermed)
         items.append((scores[0], new_chain, paper_choices))
+    
+    if len(items) == 0:
+        return None
+    if len(items) != len(chains):
+        lb.w(f"{len(chains) - len(items)} / {len(chains)} chains invalidated")
     
     # The scores are still negative, so now we get a sort that's descending by
     # actual score and then ascending by author names.
@@ -169,8 +183,17 @@ def _score_author_chain(chain, repo, pairings):
         # same C published p3 and p5.
         score = 0
         for con1, con2 in zip(papers_choice[:-1], papers_choice[1:]):
-            score += _score_author_chain_link(con1, con2, repo)
-        items.append((score, papers_choice))
+            addition = _score_author_chain_link(con1, con2, repo)
+            if addition is None:
+                score = None
+                break
+            score += addition
+        
+        if score is not None:
+            items.append((score, papers_choice))
+    
+    if len(items) == 0:
+        return None, None
     items.sort(reverse=True)
     scores, paper_choices = zip(*items)
     return scores, paper_choices
@@ -210,7 +233,7 @@ def _score_author_chain_link(con1, con2, repo):
             return score1 * score2
         else:
             # The ORCID ids _don't_ match!
-            return -999999
+            return None
     
     # Attempt some affiliation fuzzy-matching
     # _process_affil will do some processing and return a list of the
@@ -232,8 +255,16 @@ def _score_author_chain_link(con1, con2, repo):
     # Put the score in the range (0, 0.3)
     affil_score = affil_frac_in_common * .3
     
-    detail1 = ADSName.parse(doc1.authors[idx1]).level_of_detail
-    detail2 = ADSName.parse(doc2.authors[idx2]).level_of_detail
+    name1 = ADSName.parse(doc1.authors[idx1])
+    name2 = ADSName.parse(doc2.authors[idx2])
+    if name1 != name2:
+        # This can occur, e.g. if J. Doe was encountered first, creating a
+        # J. Doe node in PathFinder, then Jane and John Doe were encountered
+        # and added to that node, and now a proposed chain runs from Jane
+        # to John.
+        return None
+    detail1 = name1.level_of_detail
+    detail2 = name2.level_of_detail
     # level_of_detail examples:
     # Last, First Middle: 20
     # Last, First, M: 13
@@ -311,3 +342,7 @@ def normalize_author_names(paper_choices, repo):
             new_chain.append(a1name)
         new_chain.append(a2name)
     return new_chain
+
+
+class AllPathsInvalid(RuntimeError):
+    pass
