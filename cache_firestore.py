@@ -23,8 +23,8 @@ _author_data_cache = {}
 # A batch can contain 500 operations
 MAX_OPS = 500
 # An API call can max out at 10 MiB. I don't know how to account for overhead
-# on each request, so use a conservative 8 MiB
-MAX_API_CALL_SIZE = 8 * 1024 * 1024
+# on each request, so use a conservative 7 MiB
+MAX_API_CALL_SIZE = 7 * 1024 * 1024
 
 
 def refresh():
