@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import itertools
+import string
 from typing import Tuple
 
 from unidecode import unidecode_expect_ascii as unidecode
 
 _name_cache = {}
+# Translation table to remove all characters that aren't
+# lower-case ascii letters
+_char_filter = str.maketrans('', '', ''.join(c for c in map(chr, range(256))
+                                             if c not in string.ascii_lowercase))
 
 
 class ADSName:
@@ -103,9 +108,7 @@ class ADSName:
                 self._given_names = tuple()
         
         self._last_name = unidecode(self._last_name).lower().strip()
-        # 1923CMWCI.256....1D is one example of a paper with a period at the
-        # end of the author name. So special case, I guess?
-        self._given_names = tuple(unidecode(n).lower().strip().strip('.')
+        self._given_names = tuple(unidecode(n).lower().strip()
                                   for n in self._given_names)
         
         if self._last_name[0:2] in (">=", "=>"):
@@ -113,35 +116,30 @@ class ADSName:
             self._allow_same_specific = True
             self._require_less_specific = False
             self._require_exact = False
-            self._last_name = self._last_name[2:]
             modifier_prefix = ">="
         elif self._last_name[0:2] in ("<=", "=<"):
             self._require_more_specific = False
             self._allow_same_specific = True
             self._require_less_specific = True
             self._require_exact = False
-            self._last_name = self._last_name[2:]
             modifier_prefix = "<="
         elif self._last_name.startswith(">"):
             self._require_more_specific = True
             self._allow_same_specific = False
             self._require_less_specific = False
             self._require_exact = False
-            self._last_name = self._last_name[1:]
             modifier_prefix = ">"
         elif self._last_name.startswith("<"):
             self._require_more_specific = False
             self._allow_same_specific = False
             self._require_less_specific = True
             self._require_exact = False
-            self._last_name = self._last_name[1:]
             modifier_prefix = "<"
         elif self._last_name.startswith("="):
             self._require_more_specific = False
             self._allow_same_specific = False
             self._require_less_specific = False
             self._require_exact = True
-            self._last_name = self._last_name[1:]
             modifier_prefix = "="
         else:
             self._require_more_specific = False
@@ -149,6 +147,11 @@ class ADSName:
             self._require_less_specific = False
             self._require_exact = False
             modifier_prefix = ""
+        
+        # Remove any non-letter characters
+        self._last_name = self._last_name.translate(_char_filter)
+        self._given_names = tuple(name.translate(_char_filter)
+                                  for name in self._given_names)
         
         # This value is used in equality checking (a very frequent operation),
         # so it is memoized for speed. One goal here is to ensure consistent
