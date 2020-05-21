@@ -7,10 +7,15 @@ from typing import Tuple
 from unidecode import unidecode_expect_ascii as unidecode
 
 _name_cache = {}
-# Translation table to remove all characters that aren't
-# lower-case ascii letters
+# Translation table to remove all characters that aren't lower-case ascii
+# letters or a space. (A space is allowable inside a last name, and will be
+# removed as part of a given name during splitting.)
 _char_filter = str.maketrans('', '', ''.join(c for c in map(chr, range(256))
-                                             if c not in string.ascii_lowercase))
+                                             if c not in string.ascii_lowercase + ' '))
+# Translation table to replace with spaces characters that should be allowed
+# to split names into pieces. The period is included here so we can gracefully
+# handle a type like "Last, F.M."
+_char_prefilter = str.maketrans("-.", "  ")
 
 
 class ADSName:
@@ -97,6 +102,9 @@ class ADSName:
         else:
             # A complete name has been passed as a single string.
             self._original_name = last_name
+            
+            last_name = last_name.translate(_char_prefilter)
+            
             # Let's break it into components
             parts = last_name.split(",", maxsplit=1)
             self._last_name = parts[0]
