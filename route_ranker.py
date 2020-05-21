@@ -86,20 +86,46 @@ def _insert_document_data(pairings, doc_data, repo, excluded_names):
                     del doc_record['timestamp']
                     doc_data[bibcode] = doc_record
                 
-                auth_1_idx = None
-                auth_2_idx = None
-                for i, author in enumerate(doc_record['authors']):
-                    author = ADSName.parse(author)
-                    if author in excluded_names:
-                        continue
-                    if auth_1_idx is None and author1 == author:
-                        auth_1_idx = i
-                    if auth_2_idx is None and author2 == author:
-                        auth_2_idx = i
-                    if auth_1_idx is not None and auth_2_idx is not None:
-                        break
+                auth_1_idx, auth_2_idx = _find_indices(
+                    doc_record['authors'],
+                    bibcode,
+                    author1,
+                    author2,
+                    excluded_names)
+
                 replacement.append((bibcode, auth_1_idx, auth_2_idx))
             pairings[k1][k2] = replacement
+
+
+# We can't use functools.lru_cache here because of the doc_record and
+# excluded_names arguments, which aren't hashable
+indices_cache = {}
+def _find_indices(authors, bibcode, author1, author2, excluded_names):
+    key1 = (bibcode, author1.original_name)
+    key2 = (bibcode, author2.original_name)
+    try:
+        auth_1_idx = indices_cache[key1]
+    except KeyError:
+        auth_1_idx = None
+    try:
+        auth_2_idx = indices_cache[key2]
+    except KeyError:
+        auth_2_idx = None
+    
+    for i, author in enumerate(authors):
+        if auth_1_idx is not None and auth_2_idx is not None:
+            break
+        author = ADSName.parse(author)
+        if author in excluded_names:
+            continue
+        if auth_1_idx is None and author1 == author:
+            auth_1_idx = i
+        if auth_2_idx is None and author2 == author:
+            auth_2_idx = i
+    
+    indices_cache[key1] = auth_1_idx
+    indices_cache[key2] = auth_2_idx
+    return auth_1_idx, auth_2_idx
 
 
 def _build_author_chains(src: PathNode):

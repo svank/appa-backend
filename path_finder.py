@@ -145,12 +145,12 @@ class PathFinder:
                 ok_aliases = [
                     name for name in record.appears_as
                     if name not in self.excluded_names]
-                ok_bibcodes = [
+                ok_bibcodes = {
                     bibcode
                     for alias in ok_aliases
                     for bibcode in record.appears_as[alias]
                     if bibcode not in self.excluded_bibcodes
-                ]
+                }
                 
                 for coauthor in record.coauthors:
                     # lb.d(f"  Checking coauthor {coauthor}")
