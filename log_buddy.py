@@ -30,6 +30,7 @@ class LogBuddy:
         self.n_authors_queried = 0
         self.n_docs_queried = 0
         self.n_network_queries = 0
+        self.n_authors_from_ADS = 0
         
         self.n_coauthors_seen = 0
         
@@ -102,6 +103,9 @@ class LogBuddy:
         self.time_waiting_network.append(time)
         self.update_progress_cache()
     
+    def on_author_queried_from_ADS(self, n=1):
+        self.n_authors_from_ADS += n
+    
     def on_start_path_finding(self):
         self.start_time = time.time()
         self.update_progress_cache()
@@ -157,7 +161,7 @@ class LogBuddy:
                      or force)):
             self.last_cache_update = now
             cache_buddy.cache_progress_data(
-                ProgressRecord(n_ads_queries=self.n_network_queries,
+                ProgressRecord(n_ads_queries=self.n_authors_from_ADS,
                                n_authors_queried=self.n_authors_queried,
                                n_docs_queried=self.n_docs_queried,
                                n_docs_relevant=self.n_docs_relevant,

@@ -79,6 +79,8 @@ class ADS_Buddy:
         
         documents = self._do_query_for_author(params, len(authors))
         
+        lb.on_author_queried_from_ADS(len(authors))
+        
         author_records = NameAwareDict()
         for author in authors:
             author_records[author] = AuthorRecord(name=author, documents=[])
