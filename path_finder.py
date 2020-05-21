@@ -54,6 +54,8 @@ class PathFinder:
         self.excluded_names = NameAwareSet()
         self.excluded_bibcodes = set()
         if excluded_names is not None:
+            if type(excluded_names) is str:
+                excluded_names = [excluded_names]
             for name in excluded_names:
                 name = name.strip()
                 if name == '':
