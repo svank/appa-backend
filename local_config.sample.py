@@ -24,14 +24,19 @@ def log_error_extra(msg): pass
 def log_exception_extra(): pass
 
 # For Cloud Error Reporting:
+# error_logger = None
+#
 # def log_error_extra(message):
-#     from google.cloud import error_reporting
-#     if message:
-#         error_reporting.Client().report(message)
-#     else:
-#         error_reporting.Client().report_exception()
+#     global error_logger
+#     if error_logger is None:
+#         from google.cloud import error_reporting
+#         error_logger = error_reporting.Client()
+#     error_logger.report(message)
 #
 #
 # def log_exception_extra():
-#     from google.cloud import error_reporting
-#     error_reporting.Client().report_exception()
+#     global error_logger
+#     if error_logger is None:
+#         from google.cloud import error_reporting
+#         error_logger = error_reporting.Client()
+#     error_logger.report_exception()
