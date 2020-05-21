@@ -305,3 +305,27 @@ class TestRouteRanker(TestCase):
         for doc in ['DJ', 'IJ']:
             self.assertIn('paper' + doc, doc_data)
         self.assertEqual(2, len(doc_data))
+    
+    def test_handling_exclusions(self):
+        """paperKL2 has two authors matching "Author, L.", namely
+        "Author, L." and "Author, L. L.". PathFinder should handle this
+        without any trouble, but we need to ensure the chain shows
+        "Author, L. L.", and not the excluded "Author, L.".
+        
+        This is coming from a real-life situation."""
+        src = "Author, L"
+        dest = "Author, A"
+        exclude = ["=Author, L."]
+        pf = path_finder.PathFinder(src, dest, exclude)
+        pf.find_path()
+
+        scored_chains, doc_data = route_ranker.process_pathfinder(pf)
+        self.assertEqual([chain for _, chain, _ in scored_chains],
+                         [["Author, L. L.", "Author, K.", "Author, Aaa"]])
+        #                   ^ Author, L. L., _not_ Author, L.
+        paper_choices = [pc for _, _, pc in scored_chains]
+        self.assertEqual(paper_choices[0],
+                         ((('paperKL2', 1, 2), ('paperAK', 1, 0),),))
+        for doc in ['KL2', 'AK']:
+            self.assertIn('paper' + doc, doc_data)
+        self.assertEqual(2, len(doc_data))

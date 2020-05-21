@@ -309,7 +309,7 @@ class TestPathFinder(TestCase):
         self.assertEqual(links_to_name_doc_map(node.links_toward_src),
                          {})
         self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
-                         {'author, k.': ['paperKL']})
+                         {'author, k.': ['paperKL', 'paperKL2']})
         
         # Checking the next node, Author, K.
         node = sorted(node.neighbors_toward_dest)[0]
@@ -325,7 +325,7 @@ class TestPathFinder(TestCase):
                          ['author, aaa'])
         
         self.assertEqual(links_to_name_doc_map(node.links_toward_src),
-                         {'author, l.': ['paperKL']})
+                         {'author, l.': ['paperKL', 'paperKL2']})
         self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
                          {'author, aaa': ['paperAK']})
         

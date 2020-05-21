@@ -171,6 +171,14 @@ documents = {
         'orcid_id_src': '',
         **empty_document
     },
+    'paperKL2': {
+        'title': "Paper Linking K and two L's",
+        'authors': ['Author, L.', 'Author, L. L.', 'Author, K.'],
+        'affils': ['L Institute', 'L U', 'K Center for K'],
+        'orcid_ids': [],
+        'orcid_id_src': '',
+        **empty_document
+    },
     'paperUncon': {
         'title': 'Paper Linking Uncon1 & Uncon2',
         'authors': ['author, unconnected b.', 'author, unconnected a.'],
@@ -239,17 +247,20 @@ def load_author(key):
     coauthors = defaultdict(list)
     appears_as = defaultdict(list)
     for bibcode, document in documents.items():
+        idx = len(docs)
+        matched = False
         # Go through the document's authors until/if we find our search author
         for author in document['authors']:
             if author == name:
-                docs.append(bibcode)
-                idx = len(docs) - 1
-                appears_as[author].append(idx)
-                
-                # Now add the doc's other authors as coauthors
-                for coauthor in document['authors']:
-                    coauthors[coauthor].append(idx)
-                break
+                matched = True
+                if bibcode not in docs:
+                    docs.append(bibcode)
+                if idx not in appears_as[author]:
+                    appears_as[author].append(idx)
+        if matched:
+            # Now add the doc's other authors as coauthors
+            for coauthor in document['authors']:
+                coauthors[coauthor].append(idx)
     if len(docs) or key.endswith("nodocs"):
         for coauthor, coauthor_dat in coauthors.items():
             coauthors[coauthor] = ','.join(str(i) for i in coauthor_dat)
