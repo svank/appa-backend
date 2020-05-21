@@ -1,4 +1,7 @@
+import time
+
 import route_ranker
+from log_buddy import lb
 from path_finder import PathFinder
 
 
@@ -15,6 +18,7 @@ class RoutePrinter:
         print(self.__str__(col_width, separator))
     
     def __str__(self, col_width=20, separator=" | "):
+        t_start = time.time()
         fmt = "{{:{}.{}}}".format(col_width, col_width)
         
         chains = route_ranker.get_ordered_chains(self.path_finder)
@@ -28,4 +32,6 @@ class RoutePrinter:
             out_chains.append(res)
         
         strings = [fmt.format(*chain) for chain in out_chains]
-        return '\n'.join(strings)
+        output = '\n'.join(strings)
+        lb.on_result_prepared(time.time() - t_start)
+        return output
