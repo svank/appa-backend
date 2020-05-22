@@ -6,6 +6,7 @@ cache_fs.py
 clean_cache.py
 local_config.sample.py
 route_printer.py
+README.md
 
 cache
 tests
