@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from ads_name import ADSName
+from ads_name import ADSName, InvalidName
 
 namesA = [
     "murray",
@@ -245,3 +245,46 @@ class TestADSName(TestCase):
                          ADSName.parse("last, first middle").level_of_detail)
         self.assertEqual(23,
                          ADSName.parse("last, first middle m").level_of_detail)
+    
+    def test_special_cases(self):
+        # A variety of special cases should be removed
+        name = "author, first middle"
+        for char in "!@#$%^&*()+={}[];:'\"<>/?":
+            name_mutated = name[0:2] + char + name[2:]
+            self.assertEqual(ADSName.parse(name_mutated).full_name, name)
+        
+        # Hyphens should be treated as spaces
+        self.assertEqual(ADSName.parse("author, first-middle").full_name,
+                         "author, first middle")
+        
+        self.assertEqual(ADSName.parse("author, first-m").full_name,
+                         "author, first m.")
+        
+        self.assertEqual(ADSName.parse("author-name, first").full_name,
+                         "author name, first")
+        
+        # A hyphen prefix should be stripped
+        self.assertEqual(ADSName.parse("author, f. -m").full_name,
+                         "author, f. m.")
+        
+        # Periods should be treated as spaces to handle typos
+        self.assertEqual(ADSName.parse("author, f.m.").full_name,
+                         "author, f. m.")
+        
+        # Diacritics should be stripped
+        self.assertEqual(ADSName.parse("Áùthor, ñäme").full_name,
+                         "author, name")
+        
+        # Additional commas should be ignored
+        self.assertEqual(ADSName.parse("author, first m., jr.").full_name,
+                         "author, first m. jr")
+        
+        # Extra spaces should be ignored
+        self.assertEqual(ADSName.parse(" author ,   first   m.   ").full_name,
+                         "author, first m.")
+    
+    def test_errors(self):
+        with self.assertRaises(InvalidName):
+            ADSName.parse(",last, first")
+        with self.assertRaises(InvalidName):
+            ADSName.parse(",last")
