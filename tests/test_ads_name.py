@@ -298,3 +298,18 @@ class TestADSName(TestCase):
             ADSName.parse(",last, first")
         with self.assertRaises(InvalidName):
             ADSName.parse(",last")
+    
+    def test_preserve_case(self):
+        # Ensure the parsing cache is populated
+        for name in namesA:
+            parsed = ADSName.parse(name.upper())
+            self.assertEqual(parsed.full_name, name)
+        
+        for name in namesA:
+            parsed = ADSName.parse(name.upper(), preserve=True)
+            self.assertEqual(parsed.full_name, name.upper())
+        
+        for name in namesA:
+            parsed = ADSName.parse(name.upper())
+            parsed = ADSName.parse(parsed, preserve=True)
+            self.assertEqual(parsed.full_name, name.upper())

@@ -11,8 +11,9 @@ _name_cache = {}
 # Translation table to remove all characters that aren't lower-case ascii
 # letters or a space. (A space is allowable inside a last name, and will be
 # removed as part of a given name during splitting.)
+ok_chars = string.ascii_lowercase + ' '
 _char_filter = str.maketrans('', '', ''.join(c for c in map(chr, range(256))
-                                             if c not in string.ascii_lowercase + ' '))
+                                             if c not in ok_chars))
 # Translation table to replace with spaces characters that should be allowed
 # to split names into pieces. The period is included here so we can gracefully
 # handle a type like "Last, F.M."
@@ -72,7 +73,7 @@ class ADSName:
     _equality_cache: {}
     
     @classmethod
-    def parse(cls, last_name, *given_names):
+    def parse(cls, last_name, *given_names, preserve=False):
         """Converts a string to an ADSName.
         
         Names may be given as a single string in the format "Last, First, M..."
@@ -80,9 +81,22 @@ class ADSName:
         
         Any number of given names are accepted after the last/family name.
         Except for the last name, single-letter names (followed by an optional
-        period) are assumed to be initials."""
+        period) are assumed to be initials.
+        
+        If preserve=True, case and punctuation marks are maintained, and the
+        text is not converted to ASCII. An existing ADSName instance can be
+        re-parsed with preserve=True. This will use the instance's
+        original_name to restore information. Using preserve=True will, in
+        general, break equality checking."""
+        if preserve:
+            if type(last_name) is ADSName:
+                return ADSName(last_name.original_name,
+                               preserve=preserve)
+            return ADSName(last_name, *given_names, preserve=preserve)
+        
         if type(last_name) == ADSName:
             return last_name
+        
         key = (last_name, *given_names)
         try:
             return _name_cache[key]
@@ -91,7 +105,7 @@ class ADSName:
             _name_cache[key] = instance
             return instance
     
-    def __init__(self, last_name, *given_names):
+    def __init__(self, last_name, *given_names, preserve=False):
         """Do not call this method directly. Instead, use ADSName.parse()."""
         for name in itertools.chain([last_name], given_names):
             if type(name) != str:
@@ -108,7 +122,8 @@ class ADSName:
             # A complete name has been passed as a single string.
             self._original_name = last_name
             
-            last_name = last_name.translate(_char_prefilter)
+            if not preserve:
+                last_name = last_name.translate(_char_prefilter)
             
             # Let's break it into components
             parts = last_name.split(",", maxsplit=1)
@@ -121,9 +136,14 @@ class ADSName:
                 self._given_names = tuple()
 
         self._last_name = _multiple_spaces_pattern.sub(' ', self._last_name)
+
+        if not preserve:
+            self._last_name = unidecode(self._last_name).lower()
+            self._given_names = tuple(unidecode(n).lower()
+                                      for n in self._given_names)
         
-        self._last_name = unidecode(self._last_name).lower().strip()
-        self._given_names = tuple(unidecode(n).lower().strip()
+        self._last_name = self._last_name.strip()
+        self._given_names = tuple(n.strip()
                                   for n in self._given_names)
         
         if self._last_name[0:2] in (">=", "=>"):
@@ -164,10 +184,11 @@ class ADSName:
             modifier_prefix = ""
         
         # Remove any non-letter characters
-        self._last_name = self._last_name.translate(_char_filter).strip()
-        given_names = (name.translate(_char_filter).strip()
-                       for name in self._given_names)
-        self._given_names = tuple(gn for gn in given_names
+        if not preserve:
+            self._last_name = self._last_name.translate(_char_filter).strip()
+            self._given_names = tuple(name.translate(_char_filter).strip()
+                                      for name in self._given_names)
+        self._given_names = tuple(gn for gn in self._given_names
                                   if gn != '')
 
         if self.last_name == '':

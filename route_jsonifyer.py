@@ -77,44 +77,47 @@ def to_json(path_finder: PathFinder):
     return json.dumps(output)
 
 
-def get_name_as_in_ADS(name, names_in_result: []):
+def get_name_as_in_ADS(target_name, names_in_result: []):
     """For presentation in the UI, figures out how to capitalize a name
     
-    Look through all the publications belonging to the name and how the
-    author's name appears in those publications. If we find a version that
-    exactly matches what we have, use that. If not, look for the
-    most-detailed version that's less detailed than what we have, and use that.
-    If that's not found, grab the least detailed version and use that."""
+    The user may have typed in the query names in all lowercase. For the large
+    banner at the top of the page, it would be nice to format the names more
+    properly. Rather than just defaulting to first-letter-uppercase, we can
+    use our ADS data to present the name in a form (or one of the forms) ADS
+    has for the name. This means we may also pick up diacritics.
+    
+    Looks through all the publications belonging to the name and how the
+    author's name appears in those publications. Grabs (one of) the
+    most-detailed forms. If it contains more given names than the target
+    names, truncates the list. Shortens given names to initials if the target
+    name has an initial at that position."""
     repo = Repository(can_skip_refresh=True)
     names_in_result = [ADSName.parse(name) for name in names_in_result]
-    name = ADSName.parse(name).without_modifiers
+    target_name = ADSName.parse(target_name)
     
-    record = repo.get_author_record(name)
+    record = repo.get_author_record(target_name)
     aliases = record.appears_as.keys()
-    
+    aliases = [ADSName.parse(alias) for alias in aliases]
     # Remove all aliases that aren't consistent with any of the name forms
     # used in the set of possible chains. E.g. if the user searched for
     # "Last" and all chains terminate at "Last, B.", then we shouldn't view
     # "Last, I." as a viable alias.
-    aliases = [alias for alias in aliases if alias in names_in_result]
+    aliases = [alias
+               for alias in aliases
+               if alias in names_in_result]
     
-    # If any alias is an exact match, choose that
-    for alias in aliases:
-        if name == '=' + alias:
-            return alias
+    # Grab the most-detailed alias
+    alias = sorted([(a.level_of_detail, a.original_name) for a in aliases])[-1][1]
+    alias = ADSName.parse(alias, preserve=True)
     
-    # Choose the alias that's the most detailed while still being less detailed
-    # than the target name
-    names_that_are_less_detailed = []
-    for alias in aliases:
-        if name == '>' + alias:
-            names_that_are_less_detailed.append(
-                (ADSName.parse(alias).level_of_detail, alias))
-    if len(names_that_are_less_detailed):
-        return sorted(names_that_are_less_detailed)[-1][1]
+    # Trim it down to size
+    gns = alias.given_names
+    if len(gns) > len(target_name.given_names):
+        gns = gns[:len(target_name.given_names)]
     
-    # Given that every alias is more detailed than the target, choose the least
-    # detailed form.
-    all_names = ((ADSName.parse(alias).level_of_detail, alias)
-                 for alias in aliases)
-    return sorted(all_names)[0][1]
+    # Ensure we have initials where we need them
+    gns = [gn if len(tgn) > 1 else gn[0]
+           for gn, tgn in zip(gns, target_name.given_names)]
+    
+    final_name = ADSName.parse(alias.last_name, *gns, preserve=True)
+    return final_name.full_name
