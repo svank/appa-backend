@@ -19,23 +19,35 @@ diff_names = [ADSName.parse(n) for n in diff_names_str]
 class TestNameAwareDict(TestCase):
     def test_get_set_item(self):
         nad = NameAwareDict()
+
+        with self.assertRaises(KeyError):
+            nad[diff_names[0]]
+        with self.assertRaises(KeyError):
+            nad[diff_names[1]]
         
         node = PathNode(equal_names[0])
         nad[equal_names[0]] = node
-
+        
+        diff_nodes = []
         for name in diff_names:
             with self.assertRaises(KeyError):
                 nad[name]
-            nad[name] = PathNode(name)
+            new_node = PathNode(name)
+            nad[name] = new_node
+            diff_nodes.append(new_node)
         
         for name in equal_names:
             self.assertIs(node, nad[name])
             
-        for name in diff_names:
+        for name, target_node in zip(diff_names, diff_nodes):
             self.assertIsNot(node, nad[name])
+            self.assertIs(target_node, nad[name])
         
-        nad[equal_names[2]] = PathNode(equal_names[2])
-        self.assertIsNot(node, nad[equal_names[0]])
+        new_node = PathNode(equal_names[2])
+        nad[equal_names[2]] = new_node
+        for name in equal_names:
+            self.assertIsNot(node, nad[name])
+            self.assertIs(new_node, nad[name])
     
     def test_del_item(self):
         nad = NameAwareDict()
@@ -44,11 +56,23 @@ class TestNameAwareDict(TestCase):
         
         self.assertIn(diff_names[0], nad)
         self.assertIn(diff_names[1], nad)
+        self.assertIn(diff_names[2], nad)
         del nad[diff_names[0]]
         self.assertNotIn(diff_names[0], nad)
         self.assertIn(diff_names[1], nad)
+        self.assertIn(diff_names[2], nad)
         del nad[diff_names[1]]
         self.assertNotIn(diff_names[1], nad)
+        self.assertIn(diff_names[2], nad)
+        del nad[diff_names[2]]
+        self.assertNotIn(diff_names[2], nad)
+        
+        nad[equal_names[0]] = PathNode(equal_names[0])
+        del nad[equal_names[1]]
+        for name in equal_names:
+            self.assertNotIn(name, nad)
+            with self.assertRaises(KeyError):
+                nad[name]
     
     def test_keys(self):
         nad = NameAwareDict()
@@ -157,7 +181,6 @@ class TestNameAwareDict(TestCase):
             self.assertIn(lte, nad)
             self.assertNotIn(gt, nad)
             self.assertIn(ex, nad)
-            
 
 
 class TestNameAwareSet(TestCase):
