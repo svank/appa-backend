@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import itertools
+import re
 import string
 from typing import Tuple
 
@@ -16,6 +17,10 @@ _char_filter = str.maketrans('', '', ''.join(c for c in map(chr, range(256))
 # to split names into pieces. The period is included here so we can gracefully
 # handle a type like "Last, F.M."
 _char_prefilter = str.maketrans("-.", "  ")
+
+# Collapses multiple, sequential spaces into one. Used on the last name for
+# internal spaces, not needed for given names which are split at white space.
+_multiple_spaces_pattern = re.compile(" +")
 
 
 class ADSName:
@@ -114,6 +119,8 @@ class ADSName:
                 self._given_names = parts[1].split()
             else:
                 self._given_names = tuple()
+
+        self._last_name = _multiple_spaces_pattern.sub(' ', self._last_name)
         
         self._last_name = unidecode(self._last_name).lower().strip()
         self._given_names = tuple(unidecode(n).lower().strip()

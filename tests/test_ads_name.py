@@ -282,6 +282,16 @@ class TestADSName(TestCase):
         # Extra spaces should be ignored
         self.assertEqual(ADSName.parse(" author ,   first   m.   ").full_name,
                          "author, first m.")
+        
+        # Extra internal spaces should be removed
+        self.assertEqual(ADSName.parse("last      name, first").full_name,
+                         "last name, first")
+        self.assertEqual(ADSName.parse("last  name, first").full_name,
+                         "last name, first")
+        self.assertEqual(ADSName.parse("last.  name, first").full_name,
+                         "last name, first")
+        self.assertEqual(ADSName.parse("last name, first").full_name,
+                         "last name, first")
     
     def test_errors(self):
         with self.assertRaises(InvalidName):
