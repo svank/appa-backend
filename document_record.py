@@ -23,6 +23,12 @@ class DocumentRecord:
         if self.timestamp == -1:
             self.timestamp = int(time.time())
     
+    def delete_author(self, i):
+        del self.authors[i]
+        del self.affils[i]
+        del self.orcid_ids[i]
+        del self.orcid_id_src[i]
+    
     def copy(self):
         return DocumentRecord(**self.asdict())
     

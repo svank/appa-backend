@@ -74,9 +74,6 @@ class Repository:
         appears_as = defaultdict(set)
         for document in cache_buddy.load_documents(author_record.documents):
             for coauthor in document.authors:
-                if (coauthor.lower().strip().strip('.')
-                        in ("et al", "anonymous")):
-                    continue
                 coauthors[coauthor].add(document.bibcode)
                 if coauthor == author_record.name:
                     appears_as[coauthor].add(document.bibcode)

@@ -47,6 +47,7 @@ class ADS_Buddy:
         lb.on_network_complete(t_stop - t_start)
         
         rec = self._article_to_record(r.json()['response']['docs'][0])
+        self._filter_invalid_authors(rec)
         return rec
     
     def get_papers_for_author(self, query_author):
@@ -90,14 +91,14 @@ class ADS_Buddy:
         # specificity selectors for author names
         for document in documents:
             matched = False
-            for author in document.authors:
+            names = self._filter_invalid_authors(document)
+            for name in names:
                 try:
-                    if author in author_records:
-                        author_records[author].documents.append(document.bibcode)
-                        matched = True
-                except InvalidName:
-                    lb.e(f"Invalid name for {document.bibcode}: {author}")
-                    continue
+                    author_records[name].documents.append(
+                        document.bibcode)
+                    matched = True
+                except KeyError:
+                    pass
             if not matched:
                 lb.e("ADS Buddy did not find a match for " + document.bibcode)
         
@@ -203,6 +204,31 @@ class ADS_Buddy:
             orcid_ids=orcid_id,
             orcid_id_src=orcid_src
         )
+    
+    def _filter_invalid_authors(self, document):
+        """Alters a DocumentRecord in-place to remove invalid author names
+        
+        Returns a list of the parsed ADSNames for the valid names."""
+        bad_indices = []
+        names = []
+        for i, author in enumerate(document.authors):
+            try:
+                name = ADSName.parse(author)
+            except InvalidName:
+                lb.e(f"Invalid name for {document.bibcode}: {author}")
+                bad_indices.append(i)
+                continue
+        
+            if name.full_name in ("et al", "anonymous"):
+                bad_indices.append(i)
+                continue
+            
+            names.append(name)
+
+        for i in reversed(bad_indices):
+            document.delete_author(i)
+        
+        return names
     
     def add_authors_to_prefetch_queue(self, *authors):
         for author in authors:
