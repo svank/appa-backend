@@ -47,8 +47,12 @@ def to_json(path_finder: PathFinder):
     
     src_name = path_finder.src.name
     dest_name = path_finder.dest.name
-    src_display_name = get_name_as_in_ADS(src_name)
-    dest_display_name = get_name_as_in_ADS(dest_name)
+    
+    used_src_names = list({chain[0] for chain in chains})
+    used_dest_names = list({chain[-1] for chain in chains})
+    
+    src_display_name = get_name_as_in_ADS(src_name, used_src_names)
+    dest_display_name = get_name_as_in_ADS(dest_name, used_dest_names)
     
     lb.on_result_prepared(time.time() - t_start)
     
@@ -72,7 +76,8 @@ def to_json(path_finder: PathFinder):
     
     return json.dumps(output)
 
-def get_name_as_in_ADS(name):
+
+def get_name_as_in_ADS(name, names_in_result: []):
     """For presentation in the UI, figures out how to capitalize a name
     
     Look through all the publications belonging to the name and how the
@@ -81,16 +86,25 @@ def get_name_as_in_ADS(name):
     most-detailed version that's less detailed than what we have, and use that.
     If that's not found, grab the least detailed version and use that."""
     repo = Repository(can_skip_refresh=True)
-    if type(name) == ADSName:
-        name = name.without_modifiers
-    else:
-        name = ADSName.parse(name)
+    names_in_result = [ADSName.parse(name) for name in names_in_result]
+    name = ADSName.parse(name).without_modifiers
+    
     record = repo.get_author_record(name)
     aliases = record.appears_as.keys()
+    
+    # Remove all aliases that aren't consistent with any of the name forms
+    # used in the set of possible chains. E.g. if the user searched for
+    # "Last" and all chains terminate at "Last, B.", then we shouldn't view
+    # "Last, I." as a viable alias.
+    aliases = [alias for alias in aliases if alias in names_in_result]
+    
+    # If any alias is an exact match, choose that
     for alias in aliases:
         if name == '=' + alias:
             return alias
     
+    # Choose the alias that's the most detailed while still being less detailed
+    # than the target name
     names_that_are_less_detailed = []
     for alias in aliases:
         if name == '>' + alias:
@@ -99,6 +113,8 @@ def get_name_as_in_ADS(name):
     if len(names_that_are_less_detailed):
         return sorted(names_that_are_less_detailed)[-1][1]
     
+    # Given that every alias is more detailed than the target, choose the least
+    # detailed form.
     all_names = ((ADSName.parse(alias).level_of_detail, alias)
                  for alias in aliases)
     return sorted(all_names)[0][1]

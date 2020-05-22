@@ -368,7 +368,9 @@ class ADSName:
     
     @property
     def without_modifiers(self):
-        return ADSName.parse(self.full_name)
+        if self.has_modifiers():
+            return ADSName.parse(self.full_name)
+        return self
     
     @property
     def modifiers(self):
@@ -378,6 +380,11 @@ class ADSName:
             out += name[0]
             name = name[1:]
         return out
+    
+    def has_modifiers(self):
+        return (self._require_exact
+                or self._require_less_specific
+                or self._require_more_specific)
 
 
 class InvalidName(RuntimeError):
