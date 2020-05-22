@@ -4,7 +4,7 @@ from html import unescape
 
 import requests
 
-from ads_name import ADSName
+from ads_name import ADSName, InvalidName
 from author_record import AuthorRecord
 from document_record import DocumentRecord
 from local_config import ADS_TOKEN
@@ -91,9 +91,13 @@ class ADS_Buddy:
         for document in documents:
             matched = False
             for author in document.authors:
-                if author in author_records:
-                    author_records[author].documents.append(document.bibcode)
-                    matched = True
+                try:
+                    if author in author_records:
+                        author_records[author].documents.append(document.bibcode)
+                        matched = True
+                except InvalidName:
+                    lb.e(f"Invalid name for {document.bibcode}: {author}")
+                    continue
             if not matched:
                 lb.e("ADS Buddy did not find a match for " + document.bibcode)
         

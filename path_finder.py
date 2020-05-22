@@ -1,7 +1,7 @@
 from typing import List, Set
 
 from ads_buddy import is_bibcode
-from ads_name import ADSName
+from ads_name import ADSName, InvalidName
 from author_record import AuthorRecord
 from cache_buddy import key_is_valid
 from log_buddy import lb
@@ -35,8 +35,20 @@ class PathFinder:
             raise PathFinderError(
                 "invalid_char_in_name",
                 'The "destination" name is invalid.')
-        src = ADSName.parse(src)
-        dest = ADSName.parse(dest)
+        
+        try:
+            src = ADSName.parse(src)
+        except InvalidName:
+            raise PathFinderError(
+                "invalid_char_in_name",
+                'The "source" name is invalid.')
+        try:
+            dest = ADSName.parse(dest)
+        except InvalidName:
+            raise PathFinderError(
+                "invalid_char_in_name",
+                'The "destination" name is invalid.')
+        
         if src == dest:
             raise PathFinderError(
                 "src_is_dest",

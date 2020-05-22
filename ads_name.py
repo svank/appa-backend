@@ -157,9 +157,14 @@ class ADSName:
             modifier_prefix = ""
         
         # Remove any non-letter characters
-        self._last_name = self._last_name.translate(_char_filter)
-        self._given_names = tuple(name.translate(_char_filter)
-                                  for name in self._given_names)
+        self._last_name = self._last_name.translate(_char_filter).strip()
+        given_names = (name.translate(_char_filter).strip()
+                       for name in self._given_names)
+        self._given_names = tuple(gn for gn in given_names
+                                  if gn != '')
+
+        if self.last_name == '':
+            raise InvalidName("Computed last name is empty")
         
         # This value is used in equality checking (a very frequent operation),
         # so it is memoized for speed. One goal here is to ensure consistent
@@ -366,3 +371,7 @@ class ADSName:
             out += name[0]
             name = name[1:]
         return out
+
+
+class InvalidName(RuntimeError):
+    pass
