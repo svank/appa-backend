@@ -10,6 +10,7 @@ from ads_name import ADSName
 
 @dataclass()
 class PathNode:
+    """Once instantiated, the name property should not be changed or mutated"""
     prunable = True
     name: ADSName
     dist_from_src: int = sys.maxsize
@@ -20,6 +21,9 @@ class PathNode:
         default_factory=lambda: defaultdict(set))
     links_toward_dest: DefaultDict[PathNode, Set[str]] = field(
         default_factory=lambda: defaultdict(set))
+    
+    def __post_init__(self):
+        self._hash = hash(self.name)
     
     def dist(self, from_src: bool):
         return self.dist_from_src if from_src else self.dist_from_dest
@@ -37,7 +41,8 @@ class PathNode:
         return self.links_toward_src if from_src else self.links_toward_dest
     
     def __hash__(self):
-        return hash(self.name)
+        # This function is called in some very tight loops, so it's memoized
+        return self._hash
     
     def __str__(self):
         return f"Node({self.name})"

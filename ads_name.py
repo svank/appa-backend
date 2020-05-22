@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import itertools
 import re
 import string
 from typing import Tuple
@@ -107,8 +106,8 @@ class ADSName:
     
     def __init__(self, last_name, *given_names, preserve=False):
         """Do not call this method directly. Instead, use ADSName.parse()."""
-        for name in itertools.chain([last_name], given_names):
-            if type(name) != str:
+        for name in (last_name, *given_names):
+            if type(name) is not str:
                 raise TypeError(f"Invalid type: {name} is {type(name)},"
                                 " expected str")
         
@@ -146,36 +145,43 @@ class ADSName:
         self._given_names = tuple(n.strip()
                                   for n in self._given_names)
         
-        if self._last_name[0:2] in (">=", "=>"):
-            self._require_more_specific = True
-            self._allow_same_specific = True
-            self._require_less_specific = False
-            self._require_exact = False
-            modifier_prefix = ">="
-        elif self._last_name[0:2] in ("<=", "=<"):
-            self._require_more_specific = False
-            self._allow_same_specific = True
-            self._require_less_specific = True
-            self._require_exact = False
-            modifier_prefix = "<="
-        elif self._last_name.startswith(">"):
-            self._require_more_specific = True
-            self._allow_same_specific = False
-            self._require_less_specific = False
-            self._require_exact = False
-            modifier_prefix = ">"
-        elif self._last_name.startswith("<"):
-            self._require_more_specific = False
-            self._allow_same_specific = False
-            self._require_less_specific = True
-            self._require_exact = False
-            modifier_prefix = "<"
-        elif self._last_name.startswith("="):
-            self._require_more_specific = False
-            self._allow_same_specific = False
-            self._require_less_specific = False
-            self._require_exact = True
-            modifier_prefix = "="
+        if len(self._last_name) and self._last_name[0] in '<>=':
+            if self._last_name[0:2] in (">=", "=>"):
+                self._require_more_specific = True
+                self._allow_same_specific = True
+                self._require_less_specific = False
+                self._require_exact = False
+                modifier_prefix = ">="
+            elif self._last_name[0:2] in ("<=", "=<"):
+                self._require_more_specific = False
+                self._allow_same_specific = True
+                self._require_less_specific = True
+                self._require_exact = False
+                modifier_prefix = "<="
+            elif self._last_name[0] == ">":
+                self._require_more_specific = True
+                self._allow_same_specific = False
+                self._require_less_specific = False
+                self._require_exact = False
+                modifier_prefix = ">"
+            elif self._last_name[0] == "<":
+                self._require_more_specific = False
+                self._allow_same_specific = False
+                self._require_less_specific = True
+                self._require_exact = False
+                modifier_prefix = "<"
+            elif self._last_name[0] == "=":
+                self._require_more_specific = False
+                self._allow_same_specific = False
+                self._require_less_specific = False
+                self._require_exact = True
+                modifier_prefix = "="
+            else:
+                self._require_more_specific = False
+                self._allow_same_specific = True
+                self._require_less_specific = False
+                self._require_exact = False
+                modifier_prefix = ""
         else:
             self._require_more_specific = False
             self._allow_same_specific = True

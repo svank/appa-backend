@@ -157,18 +157,23 @@ class PathFinder:
                 ok_aliases = [
                     name for name in record.appears_as
                     if name not in self.excluded_names]
-                ok_bibcodes = {
-                    bibcode
-                    for alias in ok_aliases
-                    for bibcode in record.appears_as[alias]
-                    if bibcode not in self.excluded_bibcodes
-                }
+                if (len(self.excluded_bibcodes)
+                        or len(ok_aliases) != len(record.appears_as)):
+                    ok_bibcodes = {
+                        bibcode
+                        for alias in ok_aliases
+                        for bibcode in record.appears_as[alias]
+                        if bibcode not in self.excluded_bibcodes
+                    }
+                else:
+                    ok_bibcodes = None
                 
                 for coauthor in record.coauthors:
                     # lb.d(f"  Checking coauthor {coauthor}")
                     bibcodes = record.coauthors[coauthor]
-                    bibcodes = [bibcode for bibcode in bibcodes
-                                if bibcode in ok_bibcodes]
+                    if ok_bibcodes is not None:
+                        bibcodes = [bibcode for bibcode in bibcodes
+                                    if bibcode in ok_bibcodes]
                     if len(bibcodes) == 0:
                         continue
                     
@@ -177,7 +182,10 @@ class PathFinder:
                         # lb.d("   Author is excluded")
                         continue
                     
-                    if coauthor not in self.nodes:
+                    try:
+                        node = self.nodes[coauthor]
+                        # lb.d(f"   Author exists in graph")
+                    except KeyError:
                         # lb.d(f"   New author added to graph")
                         lb.on_coauthor_seen()
                         node = PathNode(name=coauthor)
@@ -189,15 +197,13 @@ class PathFinder:
                         authors_next.append(coauthor)
                         continue
                     
-                    # lb.d(f"   Author exists in graph")
-                    node = self.nodes[coauthor]
-                    if (node.dist(expanding_from_src)
-                            <= expand_node_dist):
+                    # if (node.dist(expanding_from_src)
+                    #         <= expand_node_dist):
                         # This node is closer to the src/dest than we are
                         # and must have been encountered in a
                         # previous expansion cycle. Ignore it.
-                        pass
-                    elif (node.dist(expanding_from_src)
+                        # pass
+                    if (node.dist(expanding_from_src)
                             > expand_node_dist):
                         # We provide an equal-or-better route from the
                         # src/dest than the route (if any) that this node
