@@ -222,14 +222,13 @@ class ADSName:
         """Checks equality by my understanding of ADS's name-matching rules.
         
         A layer of caching is implemented."""
-        if type(other) is str:
-            other = ADSName.parse(other)
-        elif type(other) is not ADSName:
-            return NotImplemented
+        if type(other) is not ADSName:
+            if type(other) is str:
+                other = ADSName.parse(other)
+            else:
+                return NotImplemented
         
-        if (self is other
-                and self._allow_same_specific
-                and other._allow_same_specific):
+        if self is other and self._allow_same_specific:
             return True
         
         try:
@@ -237,32 +236,27 @@ class ADSName:
         except KeyError:
             pass
         
-        exactly_equal = (self._last_name == other._last_name
-                         and self._given_names == other._given_names)
-        
-        if self._require_exact or other._require_exact:
-            equal = exactly_equal
-        elif exactly_equal:
-            equal = (self._allow_same_specific
-                     and other._allow_same_specific)
+        if self._last_name != other._last_name:
+            equal = False
+        elif self._require_exact or other._require_exact:
+            equal = self._given_names == other._given_names
         else:
-            consistent = (
-                self._last_name == other._last_name
-                and
-                ADSName._name_data_are_consistent(
-                    self._given_names, other._given_names)
-            )
-            if not consistent:
+            if not ADSName._name_data_are_consistent(
+                    self._given_names, other._given_names):
                 equal = False
             else:
                 if ((self._require_more_specific
                      or other._require_less_specific)
                         and not other.is_more_specific_than(self)):
-                    equal = False
+                    equal = (self._allow_same_specific
+                             and other._allow_same_specific
+                             and self._given_names == other._given_names)
                 elif ((self._require_less_specific
                        or other._require_more_specific)
                         and not self.is_more_specific_than(other)):
-                    equal = False
+                    equal = (self._allow_same_specific
+                             and other._allow_same_specific
+                             and self._given_names == other._given_names)
                 else:
                     equal = True
         

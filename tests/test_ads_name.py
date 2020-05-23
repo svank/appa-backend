@@ -62,6 +62,7 @@ class TestADSName(TestCase):
         for i in range(len(namesA)):
             aname = ADSName.parse("=" + namesA[i])
             self.assertEqual(aname, namesA[i])
+            self.assertEqual(aname, aname)
             for j in range(len(namesA)):
                 if i != j:
                     self.assertNotEqual(namesA[j], aname)
