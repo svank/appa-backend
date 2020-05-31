@@ -177,11 +177,7 @@ class ADSName:
                 self._require_exact = True
                 modifier_prefix = "="
             else:
-                self._require_more_specific = False
-                self._allow_same_specific = True
-                self._require_less_specific = False
-                self._require_exact = False
-                modifier_prefix = ""
+                raise InvalidName("Unexpected modifiers")
         else:
             self._require_more_specific = False
             self._allow_same_specific = True
@@ -360,6 +356,10 @@ class ADSName:
     @property
     def require_more_specific(self):
         return self._require_more_specific
+    
+    @property
+    def allow_same_specific(self):
+        return self._allow_same_specific
     
     @property
     def excludes_self(self):

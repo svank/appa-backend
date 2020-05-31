@@ -144,6 +144,27 @@ class TestADSName(TestCase):
                 else:
                     self.fail("Shouldn't get here")
     
+    def test_modifier_functions(self):
+        for mod, req_exact, req_less, req_more, allow_same in (
+            ['', False, False, False, True],
+            ['>', False, False, True, False],
+            ['<', False, True, False, False],
+            ['=', True, False, False, False],
+            ['>=', False, False, True, True],
+            ['<=', False, True, False, True],
+        ):
+            name = ADSName.parse(mod + namesA[1])
+            self.assertEqual(name.require_exact_match, req_exact)
+            self.assertEqual(name.require_less_specific, req_less)
+            self.assertEqual(name.require_more_specific, req_more)
+            self.assertEqual(name.allow_same_specific, allow_same)
+            
+            self.assertEqual(name.excludes_self,
+                             (req_less or req_more) and not allow_same)
+            self.assertEqual(name.has_modifiers(), mod != '')
+            self.assertEqual(name.modifiers, mod)
+            self.assertEqual(name.without_modifiers.full_name, namesA[1])
+    
     def test_repr(self):
         """Test than string representations of ADSNames are as expected"""
         for name in namesA:
@@ -159,7 +180,7 @@ class TestADSName(TestCase):
     
     def test_creation(self):
         """
-        Test different ways of instantiationg ADSNames
+        Test different ways of instantiating ADSNames
         """
         self.assertEqual(
             ADSName.parse("murray, stephen s. q."),
@@ -198,21 +219,35 @@ class TestADSName(TestCase):
         self.assertEqual("prefix" + name_str, "prefix" + name)
         self.assertEqual(name_str + "suffix", name + "suffix")
     
-    def test_original_name(self):
-        """Test that the original name is stored properly"""
+    def test_original_and_full_name(self):
+        """Test that original and full name access works"""
         for n in namesA:
             name = ADSName.parse(n)
             self.assertEqual(name.original_name, n)
+            self.assertEqual(name.bare_original_name, n)
             
             name = ADSName.parse(n.upper())
             self.assertEqual(name.original_name, n.upper())
+            self.assertEqual(name.bare_original_name, n.upper())
             self.assertNotEqual(name.original_name, n)
+            self.assertNotEqual(name.bare_original_name, n)
             self.assertEqual(name.full_name, n)
+            self.assertEqual(name.qualified_full_name, n)
             
-            for modifier in ['=', '<', '>', '<=', '>=', '=<', '=>', '<>=', '=><']:
+            for modifier in ['=', '<', '>', '<=', '>=']:
                 name = ADSName.parse(modifier + n)
                 self.assertEqual(name.original_name, modifier + n)
                 self.assertEqual(name.bare_original_name, n)
+                self.assertEqual(name.full_name, n)
+                self.assertEqual(name.qualified_full_name, modifier + n)
+            
+            for modifier, cor_modifier in zip(['=<', '=>'], ['<=', '>=']):
+                name = ADSName.parse(modifier + n)
+                self.assertEqual(name.original_name, modifier + n)
+                self.assertEqual(name.bare_original_name, n)
+                self.assertEqual(name.full_name, n)
+                self.assertEqual(name.qualified_full_name, cor_modifier + n)
+                
     
     def test_full_name_formatting(self):
         """Test than name parsing is insensitive to spacing and periods"""
@@ -248,7 +283,7 @@ class TestADSName(TestCase):
                          ADSName.parse("last, first middle m").level_of_detail)
     
     def test_special_cases(self):
-        # A variety of special cases should be removed
+        # A variety of special cases that should be handled
         name = "author, first middle"
         for char in "!@#$%^&*()+={}[];:'\"<>/?":
             name_mutated = name[0:2] + char + name[2:]
