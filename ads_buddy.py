@@ -100,7 +100,7 @@ class ADS_Buddy:
                 except KeyError:
                     pass
             if not matched:
-                lb.e("ADS Buddy did not find a match for " + document.bibcode)
+                lb.w("ADS Buddy did not find a match for " + document.bibcode)
         
         for author_record in author_records.values():
             # Remove any duplicate document listings
@@ -215,7 +215,7 @@ class ADS_Buddy:
             try:
                 name = ADSName.parse(author)
             except InvalidName:
-                lb.e(f"Invalid name for {document.bibcode}: {author}")
+                lb.w(f"Invalid name for {document.bibcode}: {author}")
                 bad_indices.append(i)
                 continue
         
