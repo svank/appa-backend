@@ -1,49 +1,47 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Dict, List, Union, Generic, TypeVar
+from typing import Dict, List, Union
 
 from ads_name import ADSName
-from author_record import AuthorRecord
-from path_node import PathNode
 
 
 class ContainerWithName:
-    def __init__(self, value):
-        self.orig_value = value
-        if type(value) is not ADSName:
-            value = ADSName.parse(value)
-        self.name = value
+    __slots__ = ("value", "name")
+    
+    def __init__(self, name: ADSName, value):
+        self.name = name
+        self.value = value
 
 
 Name = Union[str, ADSName]
-HasName = TypeVar("HasName", PathNode, AuthorRecord, ContainerWithName)
 
 
-class NameAwareDict(Generic[HasName]):
-    items_by_last_name: Dict[str, List[HasName]]
+class NameAwareDict:
+    items_by_last_name: Dict[str, List[ContainerWithName]]
     
     def __init__(self):
         self.items_by_last_name = defaultdict(list)
     
-    def __getitem__(self, key: Name) -> HasName:
+    def __getitem__(self, key: Name):
         if type(key) is str:
             key = ADSName.parse(key)
         items = self.items_by_last_name[key.last_name]
         for item in items:
             if item.name == key:
-                return item
+                return item.value
         raise KeyError(key)
     
-    def __setitem__(self, key: Name, value: HasName):
+    def __setitem__(self, key: Name, value):
         if type(key) is str:
             key = ADSName.parse(key)
+        container = ContainerWithName(key, value)
         items = self.items_by_last_name[key.last_name]
         for i, item in enumerate(items):
             if item.name == key:
-                items[i] = value
+                items[i] = container
                 return
-        items.append(value)
+        items.append(container)
     
     def __delitem__(self, key):
         if type(key) == str:
@@ -85,17 +83,13 @@ class NameAwareDict(Generic[HasName]):
                 yield item.name
     
     def keys(self):
-        keys = []
-        for items in self.items_by_last_name.values():
-            for item in items:
-                keys.append(item.name)
-        return keys
+        return list(self)
     
     def values(self):
         values = []
         for items in self.items_by_last_name.values():
             for item in items:
-                values.append(item)
+                values.append(item.value)
         return values
     
     def items(self):
@@ -107,7 +101,7 @@ class NameAwareSet:
         self._dict = NameAwareDict()
     
     def add(self, item: Name):
-        self._dict[item] = ContainerWithName(item)
+        self._dict[item] = item
     
     def __iter__(self):
         return iter(self._dict)
@@ -119,10 +113,10 @@ class NameAwareSet:
         return item in self._dict
 
     def __str__(self):
-        return str(self._dict.keys())
+        return str(self.values())
 
     def __repr__(self):
-        return repr(self._dict.keys())
+        return repr(self.values())
     
     def values(self):
-        return [n.orig_value for n in self._dict.values()]
+        return self._dict.values()
