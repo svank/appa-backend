@@ -291,6 +291,7 @@ def update_stats(request):
     if n_collected_timestamps > 0:
         # Update distributions, which are a summary of the past month,
         # not a time series
+        print("Updating distributions")
         for metric in metrics:
             if "distribution" in metric[1]:
                 record = get_metric_for_month(metric[0], time.time())
@@ -301,7 +302,8 @@ def update_stats(request):
                     if metric[0] == "duration_total":
                         bounds = [bound / 1000 for bound in bounds]
                     distr[metric[0]] = (bounds, counts, type)
-
+        
+        print("Updating cache sizes")
         # Update the cache size data
         n_authors = data['cache_size']['authors'][-1]
         n_docs = data['cache_size']['documents'][-1]
@@ -318,18 +320,21 @@ def update_stats(request):
         data['cache_size']['documents'].append(n_docs)
         
         # Save the new data file
+        print("Saving data")
         blob.upload_from_string(json.dumps(data))
     
         if (datetime.fromtimestamp(cumulative['timestamp'][-1], timezone).month
                 !=
                 datetime.fromtimestamp(cumulative['timestamp'][-2], timezone).month):
             # We've rolled over to another month---store an archive file
+            print("Archiving data")
             last_month = datetime.fromtimestamp(cumulative['timestamp'][-2], timezone)
             ablob = bucket.blob(f"archive-{last_month.year}-{last_month.month}")
             ablob.upload_from_string(json.dumps(data))
     
     # Produce updated plots
     times = [mdates.date2num(datetime.fromtimestamp(ts, timezone)) for ts in cumulative['timestamp']]
+    print("Updating plots")
     for cache_name in ("authors", "documents"):
         plt.figure(figsize=(5.5, 3.5))
         plt.plot(times, data['cache_size'][cache_name])
