@@ -84,17 +84,11 @@ def get_metric_for_hour(metric, t_start):
 
 
 def get_metric_for_month(metric, t_end):
-    t_end = datetime.fromtimestamp(t_end, timezone)
-
-    year = t_end.year
-    month = t_end.month - 1
-    if month < 1:
-        month += 12
-        year -= 1
-    t_start = t_end.replace(year=year, month=month)
+    # Define a month as a 30-day period
+    t_start = t_end - 30 * 24 * 60 * 60
     return get_metric_for_time(metric,
-                               t_start.timestamp(),
-                               t_end.timestamp())
+                               t_start,
+                               t_end)
 
 
 def get_metric_sum_for_hour(*args, **kwargs):
