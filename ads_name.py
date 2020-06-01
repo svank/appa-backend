@@ -460,9 +460,9 @@ def _parse_name_synonyms(synonym_list, mapping: name_aware.NameAwareDict):
         raise RuntimeError(
             "Name synonyms must not be added after names are parsed")
     for synonym in synonym_list:
-        if synonym[0] == '#':
-            continue
         synonym.strip()
+        if len(synonym) == 0 or synonym[0] == '#' or ';' not in synonym:
+            continue
         names = synonym.split(";")
         names = [ADSName.parse(name) for name in names]
         
