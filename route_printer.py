@@ -24,14 +24,7 @@ class RoutePrinter:
         chains = route_ranker.get_ordered_chains(self.path_finder)
         fmt = separator.join([fmt] * len(chains[0]))
         
-        prev_chain = chains[0]
-        out_chains = [prev_chain]
-        for chain in chains[1:]:
-            res = [e2 if e2 != e1 else ''
-                   for e1, e2 in zip(prev_chain, chain)]
-            out_chains.append(res)
-        
-        strings = [fmt.format(*chain) for chain in out_chains]
+        strings = [fmt.format(*chain) for chain in chains]
         output = '\n'.join(strings)
         lb.on_result_prepared(time.time() - t_start)
         return output
