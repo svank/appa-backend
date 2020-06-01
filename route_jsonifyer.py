@@ -106,8 +106,12 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
                for alias in aliases
                if alias in names_in_result]
     
-    # Grab the most-detailed alias
-    alias = sorted([(a.level_of_detail, a.original_name) for a in aliases])[-1][1]
+    # Grab the most-detailed alias. As tie-breaker, choose the form with the
+    # most publications.
+    alias = sorted([(a.level_of_detail,
+                     len(record.appears_as[a.original_name]),
+                     a.original_name)
+                    for a in aliases])[-1][-1]
     alias = ADSName.parse(alias, preserve=True)
     
     # Trim it down to size
