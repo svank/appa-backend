@@ -3,11 +3,11 @@ import json
 import os
 
 import cache_buddy
+import local_config
 
-CACHE_DIR = "cache"
-DOC_CACHE_SUBDIR = os.path.join(CACHE_DIR, "documents")
-AUTHOR_CACHE_SUBDIR = os.path.join(CACHE_DIR, "authors")
-PROGRESS_CACHE_SUBDIR = os.path.join(CACHE_DIR, "progress")
+DOC_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "documents")
+AUTHOR_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "authors")
+PROGRESS_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "progress")
 _author_cache_contents = set()
 
 

@@ -1,6 +1,7 @@
 import os
 # The module whose name is in this string will be imported and used
 backing_cache = "cache_fs"
+cache_fs_dir = "cache"
 
 # For firestore:
 # backing_cache = "cache_firestore"
