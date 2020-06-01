@@ -176,13 +176,27 @@ def _rank_author_chains(chains: [], repo, pairings):
     
     if len(items) == 0:
         return None
-    if len(items) != len(chains):
-        lb.w(f"{len(chains) - len(items)} / {len(chains)} chains invalidated")
     
     # The scores are still negative, so now we get a sort that's descending by
     # actual score and then ascending by author names.
     intermed = sorted(items)
-    return [(-score, chain, pc) for score, chain, pc in intermed]
+    
+    # Since we normalized the chains earlier, it's possible that we have
+    # duplicate chains (two different forms of a name that have been normalized
+    # to the same form). Let's de-duplicate. Since it's possible that the two
+    # forms have different paper choices, doing it here means we can choose
+    # the highest-ranked form.
+    chains_we_have_seen = set()
+    result = []
+    for score, chain, pc in intermed:
+        if chain not in chains_we_have_seen:
+            result.append((-score, chain, pc))
+        chains_we_have_seen.add(chain)
+    
+    if len(result) != len(chains):
+        lb.w(f"{len(chains) - len(result)} / {len(chains)} chains invalidated")
+    
+    return result
 
 
 def _score_author_chain(chain, repo, pairings):
@@ -369,7 +383,7 @@ def normalize_author_names(paper_choices, repo):
         elif i == 0:
             new_chain.append(a1name)
         new_chain.append(a2name)
-    return new_chain
+    return tuple(new_chain)
 
 
 class AllPathsInvalid(RuntimeError):
