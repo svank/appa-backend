@@ -1,3 +1,4 @@
+import difflib
 import time
 from collections import deque
 from html import unescape
@@ -53,17 +54,17 @@ class ADS_Buddy:
     def get_papers_for_author(self, query_author):
         query_author = ADSName.parse(query_author)
         
-        authors = self._select_authors_to_prefetch()
-        if query_author not in authors:
-            authors.append(query_author)
+        query_authors = self._select_authors_to_prefetch()
+        if query_author not in query_authors:
+            query_authors.append(query_author)
         
         lb.i(f"Querying ADS for author " + query_author)
-        if len(authors) > 1:
+        if len(query_authors) > 1:
             lb.i(" Also prefetching. Query: " + "; ".join(
-                [str(a) for a in authors]))
+                [str(a) for a in query_authors]))
         
         query_strings = []
-        for author in authors:
+        for author in query_authors:
             query_string = '"' + author.full_name + '"'
             if author.require_exact_match:
                 query_string = "=" + query_string
@@ -78,12 +79,12 @@ class ADS_Buddy:
                   "fl": ",".join(FIELDS),
                   "sort": "date+asc"}
         
-        documents = self._do_query_for_author(params, len(authors))
+        documents = self._do_query_for_author(params, len(query_authors))
         
-        lb.on_author_queried_from_ADS(len(authors))
+        lb.on_author_queried_from_ADS(len(query_authors))
         
         author_records = NameAwareDict()
-        for author in authors:
+        for author in query_authors:
             author_records[author] = AuthorRecord(name=author, documents=[])
         # We need to go through all the documents and match them to our
         # author list. This is critically important if we're pre-fetching
@@ -99,8 +100,37 @@ class ADS_Buddy:
                     matched = True
                 except KeyError:
                     pass
-            if not matched:
-                lb.w("ADS Buddy did not find a match for " + document.bibcode)
+            if (not matched and all(not a.require_more_specific
+                                    and not a.require_less_specific
+                                    for a in query_authors)):
+                # See if we can guess which names should have been matched
+                guesses = []
+                doc_authors = [n.full_name for n in names]
+                doc_authors_initialized = \
+                    [n.convert_to_initials().full_name for n in names]
+                for query_author in query_authors:
+                    guess = difflib.get_close_matches(
+                        query_author.full_name, doc_authors, n=1, cutoff=0.9)
+                    if len(guess):
+                        guesses.append(
+                            f"{query_author.full_name} -> {guess[0]}")
+                    else:
+                        # Try again, changing names to use initials throughout
+                        guess = difflib.get_close_matches(
+                            query_author.convert_to_initials().full_name,
+                            doc_authors_initialized,
+                            n=1, cutoff=0.9)
+                        if len(guess):
+                            # Having found a match with initialized names,
+                            # report using the full form of each name
+                            chosen_doc_author = doc_authors[
+                                doc_authors_initialized.index(guess[0])]
+                            guesses.append(f"{query_author.full_name}"
+                                           f" -> {chosen_doc_author}")
+                msg = "ADS Buddy: No matches for " + document.bibcode
+                if len(guesses):
+                    msg += " . Guesses: " + "; ".join(guesses)
+                lb.w(msg)
         
         for author_record in author_records.values():
             # Remove any duplicate document listings
@@ -108,7 +138,7 @@ class ADS_Buddy:
             # papers, which use only initials and so can have duplicate names
             author_record.documents = sorted(set(author_record.documents))
         
-        if len(authors) == 1:
+        if len(query_authors) == 1:
             return author_records[query_author], documents
         else:
             return author_records, documents

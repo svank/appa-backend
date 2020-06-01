@@ -428,6 +428,10 @@ class ADSName:
             return ADSName.parse(self.full_name)
         return self
     
+    def convert_to_initials(self):
+        return ADSName.parse(self.last_name,
+                             *[gn[0] for gn in self.given_names])
+    
     @property
     def modifiers(self):
         modifiers = ""
