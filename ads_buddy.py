@@ -110,7 +110,7 @@ class ADS_Buddy:
                     [n.convert_to_initials().full_name for n in names]
                 for query_author in query_authors:
                     guess = difflib.get_close_matches(
-                        query_author.full_name, doc_authors, n=1, cutoff=0.9)
+                        query_author.full_name, doc_authors, n=1, cutoff=0.8)
                     if len(guess):
                         guesses.append(
                             f"{query_author.full_name} -> {guess[0]}")
@@ -119,7 +119,7 @@ class ADS_Buddy:
                         guess = difflib.get_close_matches(
                             query_author.convert_to_initials().full_name,
                             doc_authors_initialized,
-                            n=1, cutoff=0.9)
+                            n=1, cutoff=0.7)
                         if len(guess):
                             # Having found a match with initialized names,
                             # report using the full form of each name
