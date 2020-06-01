@@ -1,5 +1,6 @@
 import json
 import time
+import zlib
 
 import requests
 from google.cloud import firestore
@@ -32,6 +33,28 @@ def refresh():
     _author_data_cache = {}
 
 
+# For now, compression is only applied to author records, which are by far
+# larger than document records, so that document data is stored plainly to
+# possibly ease future debugging.
+def _compress_record(record):
+    compressed_data = zlib.compress(
+        json.dumps(record, check_circular=False, separators=(',', ':')).encode(),
+        level=4)
+    output = {'timestamp': record['timestamp'],
+              'zlib_data': compressed_data}
+    if 'coauthors' in record:
+        output['n_coauthors'] = len(record['coauthors'])
+    if 'appears_as' in record:
+        output['n_aliases'] = len(record['appears_as'])
+    if 'documents' in record:
+        output['n_documents'] = len(record['documents'])
+    return output
+
+
+def _decompress_record(record):
+    return json.loads(zlib.decompress(record['zlib_data']).decode())
+
+
 def store_document(data: dict, key: str):
     doc_ref = db.collection(DOC_CACHE_COLLECTION).document(key)
     _set(doc_ref, data)
@@ -59,7 +82,7 @@ def load_documents(keys: []):
 
 def store_author(data: dict, key: str):
     doc_ref = db.collection(AUTHOR_CACHE_COLLECTION).document(key)
-    _set(doc_ref, data)
+    _set(doc_ref, _compress_record(data))
 
 
 def delete_author(key: str):
@@ -96,13 +119,13 @@ def load_author(key: str):
     try:
         data = _author_data_cache[key]
         del _author_data_cache[key]
-        return data.to_dict()
+        return _decompress_record(data.to_dict())
     except KeyError:
         pass
     doc_ref = db.collection(AUTHOR_CACHE_COLLECTION).document(key)
     data = doc_ref.get()
     if data.exists:
-        return data.to_dict()
+        return _decompress_record(data.to_dict())
     else:
         raise cache_buddy.CacheMiss(key)
 
@@ -126,7 +149,7 @@ def load_authors(keys: [str]):
             if not datum.exists:
                 raise cache_buddy.CacheMiss(datum.id)
             result.append(datum.to_dict())
-    return result
+    return [_decompress_record(r) for r in result]
 
 
 def store_progress_data(data: dict, key: str):
@@ -190,7 +213,13 @@ def _set(doc_ref, data):
     else:
         _batch.set(doc_ref, data)
         _batch_size += 1
-        _batch_bytes += len(json.dumps(data).encode('utf-8'))
+        if 'zlib_data' in data:
+            # We neglect the 'timestamp' field in the size calculation, but
+            # the maximum size is set conservatively
+            _batch_bytes += len(data['zlib_data'])
+        else:
+            _batch_bytes += len(
+                json.dumps(data, check_circular=False).encode('utf-8'))
         if _batch_size >= MAX_OPS or _batch_bytes > MAX_API_CALL_SIZE:
             _batch.commit()
             _batch = db.batch()
