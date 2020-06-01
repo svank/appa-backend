@@ -207,18 +207,18 @@ class TestRouteRanker(TestCase):
 
         for src, dest, exclude, expected_chain in [
             ("Author, A", "Author, G", [],
-             [['Author, Aaa', 'Author, B.', 'Author, G.'],
-              ['Author, Aaa', 'Author, Eee E.', 'Author, G.']]),
+             [('Author, Aaa', 'Author, B.', 'Author, G.'),
+              ('Author, Aaa', 'Author, Eee E.', 'Author, G.')]),
             
             ("Author, A", "Author, G",  ['paperAB2'],
-             [['Author, Aaa', 'Author, Eee E.', 'Author, G.'],
-              ['Author, A.', 'Author, Bbb', 'Author, G.']]),
+             [('Author, Aaa', 'Author, Eee E.', 'Author, G.'),
+              ('Author, A.', 'Author, Bbb', 'Author, G.')]),
             
             ("Author, D.", "Author, I.", [],
-             [['Author, D.', 'Author, J. J.', 'Author, I.']]),
+             [('Author, D.', 'Author, J. J.', 'Author, I.')]),
             
             ("Author, D.", "Author, J. J.", [],
-             [['Author, D.', 'Author, J. J.']])]:
+             [('Author, D.', 'Author, J. J.')])]:
             with self.subTest(src=src, dest=dest, excl=exclude):
                 pf = path_finder.PathFinder(src, dest, exclude)
                 pf.find_path()
@@ -241,8 +241,8 @@ class TestRouteRanker(TestCase):
         scored_chains, doc_data = run_pf(source, dest, exclude)
         
         self.assertEqual([chain for _, chain, _ in scored_chains],
-                         [['Author, Aaa', 'Author, B.', 'Author, G.'],
-                          ['Author, Aaa', 'Author, Eee E.', 'Author, G.']])
+                         [('Author, Aaa', 'Author, B.', 'Author, G.'),
+                          ('Author, Aaa', 'Author, Eee E.', 'Author, G.')])
         
         self.assertEqual([score for score, _, _ in scored_chains],
                          [.84, .1 * 13/20])
@@ -269,8 +269,8 @@ class TestRouteRanker(TestCase):
         scored_chains, doc_data = run_pf(source, dest, exclude)
         
         self.assertEqual([chain for _, chain, _ in scored_chains],
-                         [['Author, Aaa', 'Author, Eee E.', 'Author, G.'],
-                          ['Author, A.', 'Author, Bbb', 'Author, G.']])
+                         [('Author, Aaa', 'Author, Eee E.', 'Author, G.'),
+                          ('Author, A.', 'Author, Bbb', 'Author, G.')])
         
         self.assertEqual([score for score, _, _ in scored_chains],
                          [.1 * 13/20, .1 * 10/20])
@@ -293,7 +293,7 @@ class TestRouteRanker(TestCase):
         scored_chains, doc_data = run_pf(source, dest, exclude)
         
         self.assertEqual([chain for _, chain, _ in scored_chains],
-                         [['Author, D.', 'Author, J. J.', 'Author, I.']])
+                         [('Author, D.', 'Author, J. J.', 'Author, I.')])
         
         self.assertEqual([score for score, _, _ in scored_chains],
                          [.3 * 1/3 + .1 * 6/20])
@@ -321,7 +321,7 @@ class TestRouteRanker(TestCase):
 
         scored_chains, doc_data = route_ranker.process_pathfinder(pf)
         self.assertEqual([chain for _, chain, _ in scored_chains],
-                         [["Author, L. L.", "Author, K.", "Author, Aaa"]])
+                         [("Author, L. L.", "Author, K.", "Author, Aaa")])
         #                   ^ Author, L. L., _not_ Author, L.
         paper_choices = [pc for _, _, pc in scored_chains]
         self.assertEqual(paper_choices[0],

@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+import ads_name
 from ads_name import ADSName, InvalidName
 
 namesA = [
@@ -349,3 +350,92 @@ class TestADSName(TestCase):
             parsed = ADSName.parse(name.upper())
             parsed = ADSName.parse(parsed, preserve=True)
             self.assertEqual(parsed.full_name, name.upper())
+    
+    def test_synonyms(self):
+        synonyms = [
+            "test_synAA;test_synAB",
+            "test_synBB, ;test_synBA,",
+            "test_synCA, q; test_synCB, q",
+            "test_synD, a; test_synD, b",
+            "test_synEB, b; test_synEA, a",
+        ]
+        # Hack: inject test synonyms
+        ads_name._name_cache.clear()
+        ads_name._parse_name_synonyms(synonyms, ads_name._name_synonyms)
+        
+        for syn in synonyms:
+            names = syn.split(';')
+            self.assertEqual(ADSName.parse(names[0]), ADSName.parse(names[1]))
+            for name in names:
+                self.assertEqual(ADSName.parse(name).original_name, name)
+        
+        # A synonym without given names should work with given names provided
+        self.assertEqual(
+            ADSName.parse("test_synAA, a"),
+            ADSName.parse("test_synAB, abc"))
+        
+        # A synonym with given names should work without given names provided
+        self.assertEqual(
+            ADSName.parse("test_synEA"),
+            ADSName.parse("test_synEB"))
+        
+        # "test_synD, b" is selected as canonical. Given names should be
+        # updated or not, as appropriate
+        self.assertEqual(
+            ADSName.parse("test_synD, a b c d"),
+            ADSName.parse("test_synD, b"))
+        self.assertEqual(
+            ADSName.parse("test_synD, a b c d").given_names, ('b',))
+        self.assertEqual(
+            ADSName.parse("test_synD, b c d").given_names, ('b', 'c', 'd'))
+        
+        # test_synCA/synCB have the same given names, so those given names
+        # should be maintained during parsing
+        self.assertNotEqual(
+            ADSName.parse("test_synCA, abcdef"),
+            ADSName.parse("test_synCB, abc"))
+        self.assertEqual(
+            ADSName.parse("test_synCA, abcdef").given_names, ("abcdef",))
+        self.assertEqual(
+            ADSName.parse("test_synCB, abcdef g").given_names, ("abcdef", 'g'))
+        
+        # test_synEA is not selected as canonical and the synonyms have
+        # different given names, so those given names should be replaced here
+        self.assertEqual(
+            ADSName.parse("test_synEA, abcdef"),
+            ADSName.parse("test_synEA, abc"))
+        self.assertEqual(
+            ADSName.parse("test_synEA, abc d.").given_names, ("b",))
+        
+        # test_synEB is selected as canonical, so despite the synonyms having
+        # different given names, these given names should be preserved
+        self.assertNotEqual(
+            ADSName.parse("test_synEB, abcdef"),
+            ADSName.parse("test_synEB, abc"))
+        self.assertEqual(
+            ADSName.parse("test_synEB, abc d.").given_names, ("abc", "d"))
+        
+        # Last names should be replaced
+        self.assertEqual(ADSName.parse("test_synAA").last_name, "testsynab")
+        
+        # Names not matching a synonym should be unaffected
+        self.assertEqual(ADSName.parse("test_synD, e").given_names, ('e',))
+        self.assertEqual(ADSName.parse("test_synEA, f").given_names, ('f',))
+        self.assertEqual(
+            ADSName.parse("test_synEA, f").last_name, "testsynea")
+        
+        # Nothing should be changed when using the `preserve` flag
+        self.assertEqual(
+            ADSName.parse("test_synEA, abc d.", preserve=True).last_name,
+            "test_synEA")
+        self.assertEqual(
+            ADSName.parse("test_synEA, abc d.", preserve=True).given_names,
+            ('abc', 'd.'))
+        self.assertNotEqual(
+            ADSName.parse("test_synEA, abc d.", preserve=True),
+            ADSName.parse("test_synEB, b", preserve=True))
+        
+        # Remove our test synonyms
+        for key in ads_name._name_synonyms:
+            if key.last_name.startswith("test_syn"):
+                del ads_name._name_synonyms[key]

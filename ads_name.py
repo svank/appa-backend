@@ -6,6 +6,9 @@ from typing import Tuple
 
 from unidecode import unidecode_expect_ascii as unidecode
 
+import local_config
+import name_aware
+
 _name_cache = {}
 # Translation table to remove all characters that aren't lower-case ascii
 # letters or a space. (A space is allowable inside a last name, and will be
@@ -21,6 +24,8 @@ _char_prefilter = str.maketrans("-.", "  ")
 # Collapses multiple, sequential spaces into one. Used on the last name for
 # internal spaces, not needed for given names which are split at white space.
 _multiple_spaces_pattern = re.compile(" +")
+
+_name_synonyms = name_aware.NameAwareDict()
 
 
 class ADSName:
@@ -112,6 +117,7 @@ class ADSName:
                                 " expected str")
         
         self._equality_cache = {}
+        self._qualified_full_name = None
         
         if len(given_names):
             self._original_name = f"{last_name}, {' '.join(given_names)}"
@@ -142,8 +148,7 @@ class ADSName:
                                       for n in self._given_names)
         
         self._last_name = self._last_name.strip()
-        self._given_names = tuple(n.strip()
-                                  for n in self._given_names)
+        self._given_names = tuple(n.strip() for n in self._given_names)
         
         if len(self._last_name) and self._last_name[0] in '<>=':
             if self._last_name[0:2] in (">=", "=>"):
@@ -151,31 +156,30 @@ class ADSName:
                 self._allow_same_specific = True
                 self._require_less_specific = False
                 self._require_exact = False
-                modifier_prefix = ">="
+            
             elif self._last_name[0:2] in ("<=", "=<"):
                 self._require_more_specific = False
                 self._allow_same_specific = True
                 self._require_less_specific = True
                 self._require_exact = False
-                modifier_prefix = "<="
+            
             elif self._last_name[0] == ">":
                 self._require_more_specific = True
                 self._allow_same_specific = False
                 self._require_less_specific = False
                 self._require_exact = False
-                modifier_prefix = ">"
+            
             elif self._last_name[0] == "<":
                 self._require_more_specific = False
                 self._allow_same_specific = False
                 self._require_less_specific = True
                 self._require_exact = False
-                modifier_prefix = "<"
+            
             elif self._last_name[0] == "=":
                 self._require_more_specific = False
                 self._allow_same_specific = False
                 self._require_less_specific = False
                 self._require_exact = True
-                modifier_prefix = "="
             else:
                 raise InvalidName("Unexpected modifiers")
         else:
@@ -183,7 +187,6 @@ class ADSName:
             self._allow_same_specific = True
             self._require_less_specific = False
             self._require_exact = False
-            modifier_prefix = ""
         
         # Remove any non-letter characters
         if not preserve:
@@ -196,23 +199,14 @@ class ADSName:
         if self.last_name == '':
             raise InvalidName("Computed last name is empty")
         
-        # This value is used in equality checking (a very frequent operation),
-        # so it is memoized for speed. One goal here is to ensure consistent
-        # formatting so that changes in input spacing or punctuation still
-        # produce the same output. This is valuable for e.g. caching.
-        self._qualified_full_name = self.last_name
-        if len(self._given_names):
-            self._qualified_full_name += ","
-            for given_name in self._given_names:
-                self._qualified_full_name += " " + given_name
-                if len(given_name) == 1:
-                    self._qualified_full_name += "."
-        
-        # We *could* just save _qualified_full_name before stripping the
-        # modifiers from the last name, but we need to ensure the modifiers
-        # show up in a consistent order, so we re-add them here in a
-        # deterministic way.
-        self._qualified_full_name = modifier_prefix + self._qualified_full_name
+        if not preserve and self in _name_synonyms:
+            synonym = _name_synonyms[self]
+            self._qualified_full_name = None
+            
+            if synonym.last_varies:
+                self._last_name = synonym.canonical._last_name
+            if synonym.given_varies:
+                self._given_names = synonym.canonical._given_names
     
     def __eq__(self, other):
         """Checks equality by my understanding of ADS's name-matching rules.
@@ -228,7 +222,7 @@ class ADSName:
             return True
         
         try:
-            return self._equality_cache[other._qualified_full_name]
+            return self._equality_cache[other.qualified_full_name]
         except KeyError:
             pass
         
@@ -256,8 +250,8 @@ class ADSName:
                 else:
                     equal = True
         
-        self._equality_cache[other._qualified_full_name] = equal
-        other._equality_cache[self._qualified_full_name] = equal
+        self._equality_cache[other.qualified_full_name] = equal
+        other._equality_cache[self.qualified_full_name] = equal
         return equal
     
     @classmethod
@@ -337,6 +331,34 @@ class ADSName:
     def __radd__(self, other):
         return other + str(self)
     
+    def __lt__(self, other):
+        if type(other) == ADSName:
+            other = other.full_name
+        elif type(other) != str:
+            raise NotImplemented
+        return self.full_name < other
+    
+    def __gt__(self, other):
+        if type(other) == ADSName:
+            other = other.full_name
+        elif type(other) != str:
+            raise NotImplemented
+        return self.full_name > other
+    
+    def __le__(self, other):
+        if type(other) == ADSName:
+            other = other.full_name
+        elif type(other) != str:
+            raise NotImplemented
+        return self.full_name <= other
+    
+    def __ge__(self, other):
+        if type(other) == ADSName:
+            other = other.full_name
+        elif type(other) != str:
+            raise NotImplemented
+        return self.full_name >= other
+    
     @property
     def last_name(self):
         return self._last_name
@@ -376,7 +398,7 @@ class ADSName:
 
     @property
     def full_name(self):
-        return self._strip_modifiers(self._qualified_full_name)
+        return self._strip_modifiers(self.qualified_full_name)
     
     def _strip_modifiers(self, name):
         while len(name) > 0 and name[0] in ('=', '<', '>'):
@@ -385,6 +407,19 @@ class ADSName:
     
     @property
     def qualified_full_name(self):
+        # This value is used in equality checking (a very frequent operation),
+        # so it is memoized for speed. One goal here is to ensure consistent
+        # formatting so that changes in input spacing or punctuation still
+        # produce the same output. This is valuable for e.g. caching.
+        if self._qualified_full_name is None:
+            self._qualified_full_name = self.modifiers + self.last_name
+            if len(self._given_names):
+                self._qualified_full_name += ","
+                for given_name in self._given_names:
+                    self._qualified_full_name += " " + given_name
+                    if len(given_name) == 1:
+                        self._qualified_full_name += "."
+                    
         return self._qualified_full_name
     
     @property
@@ -395,17 +430,73 @@ class ADSName:
     
     @property
     def modifiers(self):
-        out = ""
-        name = self._qualified_full_name
-        while len(name) > 0 and name[0] in ('=', '<', '>'):
-            out += name[0]
-            name = name[1:]
-        return out
+        modifiers = ""
+        if self._require_less_specific:
+            if self._allow_same_specific:
+                modifiers = '<='
+            else:
+                modifiers = '<'
+        elif self._require_more_specific:
+            if self._allow_same_specific:
+                modifiers = '>='
+            else:
+                modifiers = '>'
+        elif self._require_exact:
+            modifiers = '='
+        return modifiers
     
     def has_modifiers(self):
         return (self._require_exact
                 or self._require_less_specific
                 or self._require_more_specific)
+
+
+def _parse_name_synonyms(synonym_list, mapping: name_aware.NameAwareDict):
+    if len(_name_cache):
+        raise RuntimeError(
+            "Name synonyms must not be added after names are parsed")
+    for synonym in synonym_list:
+        if synonym[0] == '#':
+            continue
+        synonym.strip()
+        names = synonym.split(";")
+        names = [ADSName.parse(name) for name in names]
+        
+        # We need to choose one variant to be canonical. Let's choose one with
+        # the highest level of detail. As tie-breakers, choose variants with
+        # longer last names, more given names, and longer overall names, all
+        # of which likely indicate more/better information. The final
+        # tie-breaker ends up being reverse-alphabetical order.
+        intermed = [(name.level_of_detail,
+                     len(name.last_name),
+                     len(name.given_names),
+                     len(name.full_name),
+                     name)
+                    for name in names]
+        intermed.sort(reverse=True)
+        canonical = intermed[0][-1]
+        variants = [i[-1] for i in intermed[1:]]
+        # Our variants are sorted with the most detailed forms first. Our
+        # NameAwareDict will end up with the less-detailed forms as keys.
+        for variant in variants:
+            mapping[variant] = Synonym(
+                canonical,
+                variant._last_name != canonical._last_name,
+                variant._given_names != canonical._given_names)
+    # The process of parsing these synonyms has populated the name cache
+    # with instances that are now invalid. Purge them.
+    _name_cache.clear()
+
+
+class Synonym:
+    def __init__(self, canonical, last_varies, given_varies):
+        self.canonical = canonical
+        self.last_varies = last_varies
+        self.given_varies = given_varies
+
+
+for fname in local_config.name_synonym_lists:
+    _parse_name_synonyms(open(fname).readlines(), _name_synonyms)
 
 
 class InvalidName(RuntimeError):

@@ -3,29 +3,29 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Dict, List, Union
 
-from ads_name import ADSName
+import ads_name
 
 
 class ContainerWithName:
     __slots__ = ("value", "name")
     
-    def __init__(self, name: ADSName, value):
+    def __init__(self, name: ads_name.ADSName, value):
         self.name = name
         self.value = value
 
 
-Name = Union[str, ADSName]
+Name = Union[str, "ads_name.ADSName"]
 
 
 class NameAwareDict:
     items_by_last_name: Dict[str, List[ContainerWithName]]
     
     def __init__(self):
-        self.items_by_last_name = defaultdict(list)
+        self.clear()
     
     def __getitem__(self, key: Name):
         if type(key) is str:
-            key = ADSName.parse(key)
+            key = ads_name.ADSName.parse(key)
         items = self.items_by_last_name[key.last_name]
         for item in items:
             if item.name == key:
@@ -34,7 +34,7 @@ class NameAwareDict:
     
     def __setitem__(self, key: Name, value):
         if type(key) is str:
-            key = ADSName.parse(key)
+            key = ads_name.ADSName.parse(key)
         container = ContainerWithName(key, value)
         items = self.items_by_last_name[key.last_name]
         for i, item in enumerate(items):
@@ -45,7 +45,7 @@ class NameAwareDict:
     
     def __delitem__(self, key):
         if type(key) == str:
-            key = ADSName.parse(key)
+            key = ads_name.ADSName.parse(key)
         items = self.items_by_last_name[key.last_name]
         for i, item in enumerate(items):
             if item.name == key:
@@ -62,7 +62,7 @@ class NameAwareDict:
     
     def __contains__(self, key: Name):
         if type(key) is str:
-            key = ADSName.parse(key)
+            key = ads_name.ADSName.parse(key)
         
         items = self.items_by_last_name[key.last_name]
         
@@ -94,6 +94,9 @@ class NameAwareDict:
     
     def items(self):
         return zip(self.keys(), self.values())
+    
+    def clear(self):
+        self.items_by_last_name = defaultdict(list)
 
 
 class NameAwareSet:

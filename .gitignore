@@ -1,5 +1,6 @@
 cache
 local_config.py
+name_synonyms
 firestore_listener/firestore_counter_config.py
 stats/stats_config.py
 
