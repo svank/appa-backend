@@ -42,6 +42,7 @@ def _compress_record(record):
         level=4)
     output = {'timestamp': record['timestamp'],
               'zlib_data': compressed_data,
+              'zlib_data_size': len(compressed_data),
               'version': record['version']}
     if 'coauthors' in record:
         output['n_coauthors'] = len(record['coauthors'])
