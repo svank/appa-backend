@@ -41,7 +41,8 @@ def _compress_record(record):
         json.dumps(record, check_circular=False, separators=(',', ':')).encode(),
         level=4)
     output = {'timestamp': record['timestamp'],
-              'zlib_data': compressed_data}
+              'zlib_data': compressed_data,
+              'version': record['version']}
     if 'coauthors' in record:
         output['n_coauthors'] = len(record['coauthors'])
     if 'appears_as' in record:
@@ -183,27 +184,42 @@ def load_progress_data(key: str):
 
 
 def clear_stale_data(authors=True, documents=True, progress=True):
-    with batch():
-        if authors:
-            author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
-            author_collection = db.collection(AUTHOR_CACHE_COLLECTION)
-            author_query = author_collection.where(
-                'timestamp', '<', author_thresh)
-            i = 0
+    if authors:
+        author_collection = db.collection(AUTHOR_CACHE_COLLECTION)
+        author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
+        author_query = author_collection.where(
+            'timestamp', '<', author_thresh)
+        i = 0
+        with batch():
             for doc in author_query.stream():
                 i += 1
                 _delete(author_collection.document(doc.id))
-            cache_buddy.log_buddy.lb.i(f"Cleared {i} authors")
         
-        if documents:
-            doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
-            doc_collection = db.collection(DOC_CACHE_COLLECTION)
-            doc_query = doc_collection.where('timestamp', '<', doc_thresh)
-            i = 0
+        author_query = author_collection.where(
+            'version', '<', cache_buddy.AUTHOR_VERSION_NUMBER)
+        with batch():
+            for doc in author_query.stream():
+                i += 1
+                _delete(author_collection.document(doc.id))
+        cache_buddy.log_buddy.lb.i(f"Cleared {i} authors")
+    
+    if documents:
+        doc_collection = db.collection(DOC_CACHE_COLLECTION)
+        doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
+        doc_query = doc_collection.where('timestamp', '<', doc_thresh)
+        i = 0
+        with batch():
             for doc in doc_query.stream():
                 i += 1
                 _delete(doc_collection.document(doc.id))
-            cache_buddy.log_buddy.lb.i(f"Cleared {i} documents")
+        
+        doc_query = doc_collection.where(
+            'version', '<', cache_buddy.DOCUMENT_VERSION_NUMBER)
+        with batch():
+            for doc in doc_query.stream():
+                i += 1
+                _delete(doc_collection.document(doc.id))
+        cache_buddy.log_buddy.lb.i(f"Cleared {i} documents")
 
 
 def _set(doc_ref, data):

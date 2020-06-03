@@ -24,13 +24,17 @@ class TestRepository(TestCase):
     def test_get_author(self):
         record = self.repository.get_author_record('author, a.')
         record.compress()
-        self.assertEqual(record.asdict(),
+        record = record.asdict()
+        record['version'] = cache_buddy.AUTHOR_VERSION_NUMBER
+        self.assertEqual(record,
                          mock_backing_cache.load_author('author, a.'))
     
     def test_get_document(self):
         record = self.repository.get_document('paperAB')
         record.compress()
-        self.assertEqual(record.asdict(),
+        record = record.asdict()
+        record['version'] = cache_buddy.DOCUMENT_VERSION_NUMBER
+        self.assertEqual(record,
                          mock_backing_cache.documents['paperAB'])
     
     def test_author_record_generation(self):

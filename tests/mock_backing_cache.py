@@ -10,7 +10,8 @@ from unittest.mock import MagicMock
 
 import path_finder
 from ads_name import ADSName
-from cache_buddy import CacheMiss
+from cache_buddy import CacheMiss, AUTHOR_VERSION_NUMBER, \
+    DOCUMENT_VERSION_NUMBER
 
 # Monkey-patch path_finder to recognize our bibcodes
 path_finder.is_bibcode = lambda x: x.startswith("paper")
@@ -32,7 +33,7 @@ empty_document = {
     'doctype': 'article', 'keywords': [],
     'publication': 'mock', 'pubdate': 'never',
     'citation_count': 0, 'read_count': 0,
-    'timestamp': TIME}
+    'timestamp': TIME, 'version': DOCUMENT_VERSION_NUMBER}
 
 documents = {
     'paperAB': {
@@ -272,7 +273,8 @@ def load_author(key):
             'documents': docs,
             'coauthors': dict(**coauthors),
             'appears_as': dict(**appears_as),
-            'timestamp': TIME
+            'timestamp': TIME,
+            'version': AUTHOR_VERSION_NUMBER,
         }
     else:
         raise CacheMiss(key)

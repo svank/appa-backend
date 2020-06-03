@@ -29,6 +29,8 @@ class TestRecordCompression(TestCase):
     def test_author_record_compression(self):
         for author in mock_backing_cache.authors:
             raw_data = mock_backing_cache.load_author(author)
+            raw_data = {**raw_data}
+            del raw_data['version']
             record = self.repository.get_author_record(author)
             
             # We have an uncompressed record. Check it for consistency
@@ -73,6 +75,8 @@ class TestRecordCompression(TestCase):
 
     def test_document_record_compression(self):
         for document, raw_data in mock_backing_cache.documents.items():
+            raw_data = {**raw_data}
+            del raw_data['version']
             record = self.repository.get_document(document)
             
             # We have an uncompressed record. Check it for consistency

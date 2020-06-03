@@ -17,6 +17,10 @@ MAXIMUM_AGE = 31 * 24 * 60 * 60  # 1 month in seconds
 MAXIMUM_AGE_AUTO = MAXIMUM_AGE - 1.1 * 24 * 60 * 60
 MAXIMUM_PROGRESS_AGE = 30 * 60  # 30 min in seconds
 
+# Cache data format version numbers
+AUTHOR_VERSION_NUMBER = 1
+DOCUMENT_VERSION_NUMBER = 1
+
 
 _loaded_documents = dict()
 _loaded_authors = dict()
@@ -57,9 +61,9 @@ def cache_document(document_record: DocumentRecord):
     
     document_record = document_record.copy()
     document_record.compress()
-    backing_cache.store_document(
-        document_record.asdict(),
-        document_record.bibcode)
+    document_record = document_record.asdict()
+    document_record['version'] = DOCUMENT_VERSION_NUMBER
+    backing_cache.store_document(document_record, document_record['bibcode'])
 
 
 def cache_documents(document_records: []):
@@ -133,14 +137,21 @@ def load_documents(bibcodes, missing_ok=False):
 def _prepare_loaded_document(data):
     if type(data) == DocumentRecord:
         record = data
+        version = DOCUMENT_VERSION_NUMBER
     elif data is None:
         return None
     else:
+        try:
+            version = data['version']
+            del data['version']
+        except KeyError:
+            version = -1
         record = DocumentRecord(**data)
         record.decompress()
         _loaded_documents[record.bibcode] = record
     
-    if time.time() - record.timestamp > MAXIMUM_AGE:
+    if (time.time() - record.timestamp > MAXIMUM_AGE
+            or version != DOCUMENT_VERSION_NUMBER):
         delete_document(record.bibcode)
         raise CacheMiss("stale cache data: " + record.bibcode)
     return record
@@ -156,6 +167,7 @@ def cache_author(author_record: AuthorRecord):
     author_record.compress()
     author_record.name = author_record.name.original_name
     author_record = author_record.asdict()
+    author_record['version'] = AUTHOR_VERSION_NUMBER
     backing_cache.store_author(author_record, cache_key)
 
 
@@ -248,12 +260,19 @@ def load_authors(cache_keys):
 def _prepare_loaded_author(data):
     if type(data) == AuthorRecord:
         record = data
+        version = AUTHOR_VERSION_NUMBER
     else:
+        try:
+            version = data['version']
+            del data['version']
+        except KeyError:
+            version = -1
         record = AuthorRecord(**data)
         record.decompress()
         _loaded_authors[str(record.name)] = record
     
-    if time.time() - record.timestamp > MAXIMUM_AGE:
+    if (time.time() - record.timestamp > MAXIMUM_AGE
+            or version != AUTHOR_VERSION_NUMBER):
         delete_author(str(record.name))
         raise CacheMiss("stale cache data: " + str(record.name))
     
