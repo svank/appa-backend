@@ -31,14 +31,16 @@ def refresh():
     old = [bibcode
            for bibcode, record in _loaded_documents.items()
            if now - record.timestamp > MAXIMUM_AGE_AUTO]
-    for bibcode in old:
-        del _loaded_documents[bibcode]
+    with backing_cache.batch():
+        for bibcode in old:
+            del _loaded_documents[bibcode]
     
     old = [name
            for name, record in _loaded_authors.items()
            if now - record.timestamp > MAXIMUM_AGE_AUTO]
-    for name in old:
-        del _loaded_authors[name]
+    with backing_cache.batch():
+        for name in old:
+            del _loaded_authors[name]
     
     backing_cache.refresh()
 
