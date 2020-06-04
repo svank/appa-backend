@@ -28,7 +28,19 @@ class AuthorRecord:
         return AuthorRecord(**self.asdict())
     
     def asdict(self):
-        return dataclasses.asdict(self)
+        # dataclasses.asdict makes a deep copy and is a bit slow doing it.
+        # It's faster to generate our own dict. Everything is either immutable
+        # or a list of immutables, so if we just make fresh list instances
+        # we still get the deep-copy semantics w/o a speed penalty.
+        return {
+            'name': self.name,
+            'documents': list(self.documents),
+            'appears_as': {k: (list(v) if type(v) is list else v)
+                           for k, v in self.appears_as.items()},
+            'coauthors': {k: (list(v) if type(v) is list else v)
+                          for k, v in self.coauthors.items()},
+            'timestamp': self.timestamp,
+        }
         
     def compress(self):
         """Performs an in-place compression of data.
