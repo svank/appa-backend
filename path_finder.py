@@ -1,6 +1,6 @@
 from typing import List, Set
 
-from ads_buddy import is_bibcode
+from ads_buddy import is_bibcode, is_orcid_id, normalize_orcid_id
 from ads_name import ADSName, InvalidName
 from author_record import AuthorRecord
 from cache_buddy import key_is_valid
@@ -27,42 +27,62 @@ class PathFinder:
     
     def __init__(self, src, dest, excluded_names=None):
         self.repository = Repository()
-        if not key_is_valid(src):
+        if not key_is_valid(src) and not is_orcid_id(src):
             raise PathFinderError(
                 "invalid_char_in_name",
                 'The "source" name is invalid.')
-        if not key_is_valid(dest):
+        if not key_is_valid(dest) and not is_orcid_id(dest):
             raise PathFinderError(
                 "invalid_char_in_name",
                 'The "destination" name is invalid.')
         
-        try:
-            src = ADSName.parse(src)
-        except InvalidName:
-            raise PathFinderError(
-                "invalid_char_in_name",
-                'The "source" name is invalid.')
-        try:
-            dest = ADSName.parse(dest)
-        except InvalidName:
-            raise PathFinderError(
-                "invalid_char_in_name",
-                'The "destination" name is invalid.')
+        names_to_be_queried = []
+        if is_orcid_id(src):
+            src = normalize_orcid_id(src)
+        else:
+            try:
+                src = ADSName.parse(src)
+            except InvalidName:
+                raise PathFinderError(
+                    "invalid_char_in_name",
+                    'The "source" name is invalid.')
+            if src.excludes_self:
+                raise PathFinderError(
+                    "src_invalid_lt_gt",
+                    "'<' and '>' are invalid modifiers for the source and "
+                    "destination authors and can only be used in the "
+                    "exclusions "
+                    "list. Try '<=' or '>=' instead."
+                )
+            names_to_be_queried.append(src)
+
+        if is_orcid_id(dest):
+            dest = normalize_orcid_id(dest)
+        else:
+            try:
+                dest = ADSName.parse(dest)
+            except InvalidName:
+                raise PathFinderError(
+                    "invalid_char_in_name",
+                    'The "destination" name is invalid.')
+            if dest.excludes_self:
+                raise PathFinderError(
+                    "dest_invalid_lt_gt",
+                    "'<' and '>' are invalid modifiers for the source and "
+                    "destination authors and can only be used in the "
+                    "exclusions "
+                    "list. Try '<=' or '>=' instead."
+                )
+            names_to_be_queried.append(dest)
         
-        if src == dest:
+        if type(src) == type(dest) and src == dest:
             raise PathFinderError(
                 "src_is_dest",
                 'The "source" and "destination" names are equal (or at least'
                 ' consistent). The distance is zero. APPA would like something'
                 ' more challenging, please.'
             )
-        if src.excludes_self or dest.excludes_self:
-            raise PathFinderError(
-                "src_dest_invalid_lt_gt",
-                "'<' and '>' are invalid modifiers for the source and "
-                "destination authors and can only be used in the exclusions "
-                "list. Try '<=' or '>=' instead."
-            )
+        
         self.excluded_names = NameAwareSet()
         self.excluded_bibcodes = set()
         if excluded_names is not None:
@@ -77,26 +97,62 @@ class PathFinder:
                 else:
                     self.excluded_names.add(ADSName.parse(name))
         
-        self.repository.notify_of_upcoming_author_request(src, dest)
+        self.repository.notify_of_upcoming_author_request(*names_to_be_queried)
         self.authors_to_expand_src = []
-        self.authors_to_expand_src_next = [src]
+        self.authors_to_expand_src_next = []
         self.authors_to_expand_dest = []
-        self.authors_to_expand_dest_next = [dest]
+        self.authors_to_expand_dest_next = []
         
         self.nodes = NameAwareDict()
-        self.src = PathNode(name=src, dist_from_src=0)
-        self.nodes[src] = self.src
-        self.dest = PathNode(name=dest, dist_from_dest=0)
-        self.nodes[dest] = self.dest
-        
         self.connecting_nodes = set()
+        
+        self.orig_src = src
+        self.orig_dest = dest
     
     def find_path(self):
         lb.on_start_path_finding()
         self.n_iterations = 0
         
-        src_rec = self.repository.get_author_record(self.src.name)
-        dest_rec = self.repository.get_author_record(self.dest.name)
+        if is_orcid_id(self.orig_src):
+            src_rec = self.repository.get_author_record_by_orcid_id(
+                self.orig_src)
+            self.src = PathNode(name=src_rec.name,
+                                dist_from_src=0,
+                                legal_bibcodes=set(src_rec.documents))
+        else:
+            src_rec = self.repository.get_author_record(self.orig_src)
+            self.src = PathNode(name=self.orig_src,
+                                dist_from_src=0)
+        
+        if is_orcid_id(self.orig_dest):
+            dest_rec = self.repository.get_author_record_by_orcid_id(
+                self.orig_dest)
+            self.dest = PathNode(name=dest_rec.name,
+                                 dist_from_dest=0,
+                                 legal_bibcodes=set(dest_rec.documents))
+        else:
+            dest_rec = self.repository.get_author_record(self.orig_dest)
+            self.dest = PathNode(name=self.orig_dest,
+                                 dist_from_dest=0)
+        
+        # If we were given a name and an ORCID ID and they turn out to refer
+        # to the same person, error out.
+        mixed_name_formats = (
+            (type(self.orig_src) == ADSName and type(self.orig_dest) == str)
+            or (type(self.orig_src) == str and type(self.orig_dest) == ADSName)
+        )
+        if mixed_name_formats and src_rec.name == dest_rec.name:
+            raise PathFinderError(
+                "src_is_dest_after_orcid",
+                'After looking up the ORCID ID, the "source" and "destination"'
+                ' identities are equal (or at least overlap).'
+            )
+        
+        self.nodes[src_rec.name] = self.src
+        self.nodes[dest_rec.name] = self.dest
+        self.authors_to_expand_src_next.append(self.src.name)
+        self.authors_to_expand_dest_next.append(self.dest.name)
+        
         if (len(src_rec.documents) == 0
                 or all([d in self.excluded_bibcodes
                         for d in src_rec.documents])):
@@ -140,12 +196,24 @@ class PathFinder:
             authors.extend(authors_next)
             authors_next.clear()
             
-            self.repository.notify_of_upcoming_author_request(*authors)
+            # There's no point pre-fetching for only one author, and this
+            # ensures we don't re-fetch the src and dest authors if they
+            # were provided by ORCID ID
+            if len(authors) > 1:
+                self.repository.notify_of_upcoming_author_request(*authors)
             for expand_author in authors:
                 lb.d(f"Expanding author {expand_author}")
                 expand_node = self.nodes[expand_author]
                 expand_node_dist = expand_node.dist(expanding_from_src)
-                record = self.repository.get_author_record(expand_author)
+                
+                # We already have src and dest records handy, and this special
+                # handling is required if either was provided by ORCID ID
+                if expand_node is self.src:
+                    record = src_rec
+                elif expand_node is self.dest:
+                    record = dest_rec
+                else:
+                    record = self.repository.get_author_record(expand_author)
 
                 # Here's a tricky one. If "<=Last, F" is in the exclude
                 # list, and if we previously came across "Last, First" and
@@ -211,15 +279,26 @@ class PathFinder:
                         # step along the chain from the src/dest through
                         # us. That it already exists suggests it has
                         # multiple chains of equal length connecting it to
-                        # the src or dest
-                        node.set_dist(expand_node_dist + 1, expanding_from_src)
-                        node.neighbors(expanding_from_src).add(expand_node)
-                        links = node.links(expanding_from_src)[expand_node]
-                        links.update(bibcodes)
-                        # lb.d(f"   Added viable step")
-                    if self.node_connects(node, expanding_from_src):
-                        self.connecting_nodes.add(node)
-                        lb.d(f"   Connecting author found!")
+                        # the src or dest.
+                        # If the src or dest was given via ORCID ID, we need
+                        # to make sure we have a valid connection. (E.g. if
+                        # the given ID is for one J Doe and our expand_author
+                        # is connected to a different J Doe, we need to
+                        # exclude that.
+                        if len(node.legal_bibcodes):
+                            legal_bibcodes = set(bibcodes) & node.legal_bibcodes
+                        else:
+                            legal_bibcodes = bibcodes
+                        if len(legal_bibcodes):
+                            links = node.links(expanding_from_src)[expand_node]
+                            links.update(legal_bibcodes)
+                            node.set_dist(expand_node_dist + 1,
+                                          expanding_from_src)
+                            node.neighbors(expanding_from_src).add(expand_node)
+                            # lb.d(f"   Added viable step")
+                            if self.node_connects(node, expanding_from_src):
+                                self.connecting_nodes.add(node)
+                                lb.d(f"   Connecting author found!")
             lb.d("All expansions complete")
             self.n_iterations += 1
             if len(self.connecting_nodes) > 0:

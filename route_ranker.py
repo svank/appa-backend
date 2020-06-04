@@ -26,8 +26,8 @@ def process_pathfinder(path_finder: PathFinder):
     
     if scored_chains is None:
         # TODO: do better
-        raise AllPathsInvalid(f"src: {path_finder.src.name}"
-                              f" dest: {path_finder.dest.name}"
+        raise AllPathsInvalid(f"src: {path_finder.orig_src}"
+                              f" dest: {path_finder.orig_dest}"
                               f" excln: {path_finder.excluded_names}"
                               f" exclb: {path_finder.excluded_bibcodes}")
     

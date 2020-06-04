@@ -14,7 +14,8 @@ class AuthorRecord:
     timestamp: int = -1
     
     def __post_init__(self):
-        self.name = ADSName.parse(self.name)
+        if self.name is not None:
+            self.name = ADSName.parse(self.name)
         if self.timestamp == -1:
             self.timestamp = int(time.time())
     

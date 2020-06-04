@@ -26,7 +26,8 @@ class Repository:
         except CacheMiss:
             author_record = self._try_generating_author_record(author)
             if author_record is None:
-                author_record, documents = self.ads_buddy.get_papers_for_author(author)
+                author_record, documents = \
+                    self.ads_buddy.get_papers_for_author(author)
                 cache_buddy.cache_documents(documents)
                 if type(author_record) == AuthorRecord:
                     self._fill_in_coauthors(author_record)
@@ -36,6 +37,19 @@ class Repository:
                         self._fill_in_coauthors(rec)
                     cache_buddy.cache_authors(author_record.values())
                     author_record = author_record[author]
+        lb.on_author_queried()
+        lb.on_doc_queried(len(author_record.documents))
+        return author_record
+    
+    def get_author_record_by_orcid_id(self, orcid_id: str) -> AuthorRecord:
+        try:
+            author_record = cache_buddy.load_author(orcid_id)
+        except CacheMiss:
+            author_record, documents = \
+                self.ads_buddy.get_papers_for_orcid_id(orcid_id)
+            cache_buddy.cache_documents(documents)
+            self._fill_in_coauthors(author_record)
+            cache_buddy.cache_author(author_record, cache_key=orcid_id)
         lb.on_author_queried()
         lb.on_doc_queried(len(author_record.documents))
         return author_record

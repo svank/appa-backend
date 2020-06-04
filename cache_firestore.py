@@ -50,6 +50,8 @@ def _compress_record(record):
         output['n_aliases'] = len(record['appears_as'])
     if 'documents' in record:
         output['n_documents'] = len(record['documents'])
+    if 'name' in record:
+        output['name'] = record['name']
     return output
 
 

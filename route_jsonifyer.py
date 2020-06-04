@@ -2,6 +2,7 @@ import json
 import time
 
 import route_ranker
+from ads_buddy import is_orcid_id
 from ads_name import ADSName
 from log_buddy import lb
 from path_finder import PathFinder
@@ -45,8 +46,8 @@ def to_json(path_finder: PathFinder):
         chains.append(chain)
         paper_choices_for_chain.append(unique_choices)
     
-    src_name = path_finder.src.name
-    dest_name = path_finder.dest.name
+    src_name = path_finder.orig_src
+    dest_name = path_finder.orig_dest
     
     used_src_names = list({chain[0] for chain in chains})
     used_dest_names = list({chain[-1] for chain in chains})
@@ -59,8 +60,10 @@ def to_json(path_finder: PathFinder):
     output = {
         'original_src': src_display_name,
         'original_dest': dest_display_name,
-        'original_src_with_mods': src_name.modifiers + src_display_name,
-        'original_dest_with_mods': dest_name.modifiers + dest_display_name,
+        'original_src_with_mods':
+            path_finder.src.name.modifiers + src_display_name,
+        'original_dest_with_mods':
+            path_finder.dest.name.modifiers + dest_display_name,
         'doc_data': doc_data,
         'chains': chains,
         'paper_choices_for_chain': paper_choices_for_chain,
@@ -93,9 +96,13 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
     name has an initial at that position."""
     repo = Repository(can_skip_refresh=True)
     names_in_result = [ADSName.parse(name) for name in names_in_result]
-    target_name = ADSName.parse(target_name)
+    orcid = is_orcid_id(target_name)
+    if orcid:
+        record = repo.get_author_record_by_orcid_id(target_name)
+    else:
+        target_name = ADSName.parse(target_name)
+        record = repo.get_author_record(target_name)
     
-    record = repo.get_author_record(target_name)
     aliases = record.appears_as.keys()
     aliases = [ADSName.parse(alias) for alias in aliases]
     # Remove all aliases that aren't consistent with any of the name forms
@@ -114,14 +121,17 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
                     for a in aliases])[-1][-1]
     alias = ADSName.parse(alias, preserve=True)
     
-    # Trim it down to size
-    gns = alias.given_names
-    if len(gns) > len(target_name.given_names):
-        gns = gns[:len(target_name.given_names)]
-    
-    # Ensure we have initials where we need them
-    gns = [gn if len(tgn) > 1 else gn[0]
-           for gn, tgn in zip(gns, target_name.given_names)]
+    if orcid:
+        gns = alias.given_names
+    else:
+        # Trim it down to size
+        gns = alias.given_names
+        if len(gns) > len(target_name.given_names):
+            gns = gns[:len(target_name.given_names)]
+        
+        # Ensure we have initials where we need them
+        gns = [gn if len(tgn) > 1 else gn[0]
+               for gn, tgn in zip(gns, target_name.given_names)]
     
     final_name = ADSName.parse(alias.last_name, *gns, preserve=True)
     return final_name.full_name

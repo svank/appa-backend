@@ -6,6 +6,7 @@ import contextlib
 import copy
 import time
 from collections import defaultdict
+from itertools import zip_longest
 from unittest.mock import MagicMock
 
 import path_finder
@@ -13,8 +14,10 @@ from ads_name import ADSName
 from cache_buddy import CacheMiss, AUTHOR_VERSION_NUMBER, \
     DOCUMENT_VERSION_NUMBER
 
-# Monkey-patch path_finder to recognize our bibcodes
+# Monkey-patch path_finder to recognize our bibcodes and ORCID IDs
 path_finder.is_bibcode = lambda x: x.startswith("paper")
+path_finder.is_orcid_id = lambda x: "ORCID" in str(x)
+path_finder.normalize_orcid_id = lambda x: x
 
 
 r"""
@@ -56,8 +59,8 @@ documents = {
         'title': 'Paper Linking A & E',
         'authors': ['Author, Aaa', 'Author, Eee E.'],
         'affils': ['A Institute', 'E Center for E'],
-        'orcid_ids': [],
-        'orcid_id_src': '',
+        'orcid_ids': ['ORCID A'],
+        'orcid_id_src': '1',
         **empty_document
     },
     'paperAK': {
@@ -88,8 +91,8 @@ documents = {
         'title': 'Paper Linking B & D',
         'authors': ['Author, B.', 'Author, D.'],
         'affils': ['B Institute', 'D Center for D'],
-        'orcid_ids': ['ORCID B'],
-        'orcid_id_src': '1',
+        'orcid_ids': ['ORCID B', 'ORCID D'],
+        'orcid_id_src': '1,1',
         **empty_document
     },
     'paperBG': {
@@ -243,23 +246,30 @@ def load_author(key):
     if key[0] in '<>=':
         raise CacheMiss(key)
     
-    name = ADSName.parse(key)
+    orcid = "ORCID" in key
+    if orcid:
+        name = None
+    else:
+        name = ADSName.parse(key)
     docs = []
     coauthors = defaultdict(list)
     appears_as = defaultdict(list)
     for bibcode, document in documents.items():
-        idx = len(docs)
-        matched = False
+        matched = None
         # Go through the document's authors until/if we find our search author
-        for author in document['authors']:
-            if author == name:
-                matched = True
-                if bibcode not in docs:
-                    docs.append(bibcode)
-                if idx not in appears_as[author]:
-                    appears_as[author].append(idx)
-        if matched:
-            # Now add the doc's other authors as coauthors
+        for orcid_id, author in zip_longest(
+                document['orcid_ids'], document['authors']):
+            if orcid and orcid_id == key:
+                matched = author
+                aname = ADSName.parse(author)
+                if name is None or aname.is_more_specific_than(name):
+                    name = aname
+            elif not orcid and name == author:
+                matched = author
+        if matched is not None:
+            docs.append(bibcode)
+            idx = len(docs) - 1
+            appears_as[matched].append(idx)
             for coauthor in document['authors']:
                 coauthors[coauthor].append(idx)
     if len(docs) or key.endswith("nodocs"):
@@ -269,7 +279,7 @@ def load_author(key):
             appears_as[alias] = ','.join(str(i) for i in alias_dat)
         return {
             # defaultdict doesn't play nicely with AuthorRecord's asdict()
-            'name': key,
+            'name': name.qualified_full_name,
             'documents': docs,
             'coauthors': dict(**coauthors),
             'appears_as': dict(**appears_as),

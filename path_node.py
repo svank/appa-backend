@@ -21,6 +21,7 @@ class PathNode:
         default_factory=lambda: defaultdict(set))
     links_toward_dest: DefaultDict[PathNode, Set[str]] = field(
         default_factory=lambda: defaultdict(set))
+    legal_bibcodes: Set[str] = field(default_factory=set)
     
     def __post_init__(self):
         self._hash = hash(self.name)
@@ -54,4 +55,5 @@ class PathNode:
                 f"dist_from_src={self.dist_from_src}, "
                 f"dist_from_dest={self.dist_from_dest}, "
                 f"neighbors_toward_src=[{src_neighbors}], "
-                f"neighbors_toward_dest=[{dest_neighbors}], ")
+                f"neighbors_toward_dest=[{dest_neighbors}], "
+                f"legal_bibcodes=[{len(self.legal_bibcodes)} bibcodes]")

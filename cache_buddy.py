@@ -159,10 +159,11 @@ def _prepare_loaded_document(data):
     return record
 
 
-def cache_author(author_record: AuthorRecord):
-    cache_key = str(author_record.name)
+def cache_author(author_record: AuthorRecord, cache_key=None):
+    if cache_key is None:
+        cache_key = str(author_record.name)
     if not key_is_valid(cache_key):
-        raise RuntimeError("Invalid author name for caching: " + cache_key)
+        raise RuntimeError("Invalid key for caching: " + cache_key)
     _loaded_authors[cache_key] = author_record
     
     author_record = author_record.copy()

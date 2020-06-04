@@ -19,7 +19,7 @@ class TestPathFinder(TestCase):
         cache_buddy._loaded_authors = {}
         cache_buddy._loaded_documents = {}
         lb.reset_stats()
-    
+
     def test_path_finding_simple(self):
         source = "Author, K"
         dest = "Author, H"
@@ -148,7 +148,121 @@ class TestPathFinder(TestCase):
                          {'author, f.': ['paperFH']})
         self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
                          {})
+    
+    def test_path_finding_orcid(self):
+        # Notable in this test is that the direct route, A -> B -> D is
+        # excluded by the ORCID ID selection, so a roundabout route
+        # (A -> E -> G -> B -> D) is required. Specifically, when B is
+        # expanded, paperAB and paperAB2 cannot be used.
+        source = "ORCID A"
+        dest = "ORCID D"
+        exclude = []
+        pf = path_finder.PathFinder(source, dest, exclude)
         
+        pf.find_path()
+        
+        self.assertEqual(lb.distance, 4)
+        self.assertEqual(pf.orig_src, source)
+        self.assertEqual(pf.orig_dest, dest)
+        self.assertEqual(pf.src.name, "author, aaa")
+        self.assertEqual(pf.dest.name, "author, d.")
+        self.assertEqual(len(pf.nodes), 5)
+        
+        for initial in 'lkjifhcg':
+            self.assertNotIn(f"author, {initial}.",
+                             cache_buddy._loaded_authors)
+        
+        # Checking the src node, Author, A.
+        node = pf.src
+        
+        self.assertEqual(node.name, 'author, aaa')
+        self.assertEqual(node.dist_from_src, 0)
+        self.assertEqual(node.dist_from_dest, 4)
+        self.assertIn(node.name, pf.nodes)
+        
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_src),
+                         [])
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_dest),
+                         ['author, eee e.'])
+        
+        self.assertEqual(links_to_name_doc_map(node.links_toward_src),
+                         {})
+        self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
+                         {'author, eee e.': ['paperAE']})
+        
+        # Checking the next node, Author, Eee E.
+        node = sorted(node.neighbors_toward_dest)[0]
+        
+        self.assertEqual(node.name, 'author, eee e.')
+        self.assertEqual(node.dist_from_src, 1)
+        self.assertEqual(node.dist_from_dest, 3)
+        self.assertIn(node.name, pf.nodes)
+        
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_src),
+                         ['author, aaa'])
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_dest),
+                         ['author, g.'])
+        
+        self.assertEqual(links_to_name_doc_map(node.links_toward_src),
+                         {'author, aaa': ['paperAE']})
+        self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
+                         {'author, g.': ['paperEG']})
+        
+        # Checking the next node, Author, G.
+        node = sorted(node.neighbors_toward_dest)[0]
+        
+        self.assertEqual(node.name, 'author, g.')
+        self.assertEqual(node.dist_from_src, 2)
+        self.assertEqual(node.dist_from_dest, 2)
+        self.assertIn(node.name, pf.nodes)
+        
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_src),
+                         ['author, eee e.'])
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_dest),
+                         ['author, b.'])
+        
+        self.assertEqual(links_to_name_doc_map(node.links_toward_src),
+                         {'author, eee e.': ['paperEG']})
+        self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
+                         {'author, b.': ['paperBCG', 'paperBG']})
+        
+        # Checking the next node, Author, Bbb
+        node = sorted(node.neighbors_toward_dest)[0]
+        
+        self.assertEqual(node.name, 'author, b.')
+        self.assertEqual(node.dist_from_src, 3)
+        self.assertEqual(node.dist_from_dest, 1)
+        self.assertIn(node.name, pf.nodes)
+        
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_src),
+                         ['author, g.'])
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_dest),
+                         ['author, d.'])
+        
+        self.assertEqual(links_to_name_doc_map(node.links_toward_src),
+                         {'author, g.': ['paperBCG', 'paperBG']})
+        self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
+                         {'author, d.': ['paperBD']})
+        
+        # Checking the final node, Author, D.
+        node = sorted(node.neighbors_toward_dest)[0]
+        self.assertIs(node, pf.dest)
+        
+        self.assertEqual(node.name, 'author, d.')
+        self.assertEqual(node.dist_from_src, 4)
+        self.assertEqual(node.dist_from_dest, 0)
+        self.assertIn(node.name, pf.nodes)
+        
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_src),
+                         ['author, b.'])
+        self.assertEqual(set_of_nodes_to_names(node.neighbors_toward_dest),
+                         [])
+        
+        self.assertEqual(links_to_name_doc_map(node.links_toward_src),
+                         {'author, b.': ['paperBD']})
+        self.assertEqual(links_to_name_doc_map(node.links_toward_dest),
+                         {})
+    
     def test_path_finding_exclusions(self):
         source = "Author, A"
         dest = "Author, F"
@@ -528,17 +642,17 @@ class TestPathFinder(TestCase):
         
         with self.assertRaises(path_finder.PathFinderError) as cm:
             path_finder.PathFinder("<author, c.", "author, b.")
-        self.assertEqual(cm.exception.key, "src_dest_invalid_lt_gt")
+        self.assertEqual(cm.exception.key, "src_invalid_lt_gt")
         with self.assertRaises(path_finder.PathFinderError) as cm:
             path_finder.PathFinder("author, c.", "<author, b.")
-        self.assertEqual(cm.exception.key, "src_dest_invalid_lt_gt")
+        self.assertEqual(cm.exception.key, "dest_invalid_lt_gt")
         
         with self.assertRaises(path_finder.PathFinderError) as cm:
             path_finder.PathFinder(">author, c.", "author, b.")
-        self.assertEqual(cm.exception.key, "src_dest_invalid_lt_gt")
+        self.assertEqual(cm.exception.key, "src_invalid_lt_gt")
         with self.assertRaises(path_finder.PathFinderError) as cm:
             path_finder.PathFinder("author, c.", ">author, b.")
-        self.assertEqual(cm.exception.key, "src_dest_invalid_lt_gt")
+        self.assertEqual(cm.exception.key, "dest_invalid_lt_gt")
         
         pf = path_finder.PathFinder("author, nodocs", "author, a.")
         with self.assertRaises(path_finder.PathFinderError) as cm:

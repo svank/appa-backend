@@ -48,8 +48,32 @@ class ADS_Buddy:
         lb.on_network_complete(t_stop - t_start)
         
         rec = self._article_to_record(r.json()['response']['docs'][0])
-        self._filter_invalid_authors(rec)
         return rec
+    
+    def get_papers_for_orcid_id(self, orcid_id):
+        orcid_id = normalize_orcid_id(orcid_id)
+        lb.i(f"Querying ADS for orcid id " + orcid_id)
+        query = f"orcid:({orcid_id})"
+        
+        documents = self._inner_query_for_author(query, 1)
+        
+        author_record = AuthorRecord(name=None, documents=[])
+        names = set()
+        for document in documents:
+            try:
+                i = document.orcid_ids.index(orcid_id)
+            except ValueError:
+                lb.w(f"ORCID ID not found in {document.bibcode}")
+                continue
+            author_record.documents.append(document.bibcode)
+            names.add(document.authors[i])
+        
+        # Find the most-detailed form of the name
+        names = [ADSName.parse(n) for n in names]
+        intermed = [(n.level_of_detail, len(n.full_name), n) for n in names]
+        intermed.sort(reverse=True)
+        author_record.name = intermed[0][-1]
+        return author_record, documents
     
     def get_papers_for_author(self, query_author):
         query_author = ADSName.parse(query_author)
@@ -72,16 +96,7 @@ class ADS_Buddy:
         query = " OR ".join(query_strings)
         query = f"author:({query})"
         
-        params = {"q": query,
-                  "fq": ["doctype:article", "database:astronomy"],
-                  "start": 0,
-                  "rows": 2000,
-                  "fl": ",".join(FIELDS),
-                  "sort": "date+asc"}
-        
-        documents = self._do_query_for_author(params, len(query_authors))
-        
-        lb.on_author_queried_from_ADS(len(query_authors))
+        documents = self._inner_query_for_author(query, len(query_authors))
         
         author_records = NameAwareDict()
         for author in query_authors:
@@ -92,7 +107,7 @@ class ADS_Buddy:
         # specificity selectors for author names
         for document in documents:
             matched = False
-            names = self._filter_invalid_authors(document)
+            names = [ADSName.parse(n) for n in document.authors]
             for name in names:
                 try:
                     author_records[name].documents.append(
@@ -137,11 +152,23 @@ class ADS_Buddy:
             # Becomes important for papers with _many_ authors, e.g. LIGO
             # papers, which use only initials and so can have duplicate names
             author_record.documents = sorted(set(author_record.documents))
-        
+
         if len(query_authors) == 1:
             return author_records[query_author], documents
         else:
             return author_records, documents
+    
+    def _inner_query_for_author(self, query, n_authors):
+        params = {"q": query,
+                  "fq": ["doctype:article", "database:astronomy"],
+                  "start": 0,
+                  "rows": 2000,
+                  "fl": ",".join(FIELDS),
+                  "sort": "date+asc"}
+        
+        documents = self._do_query_for_author(params, n_authors)
+        lb.on_author_queried_from_ADS(n_authors)
+        return documents
     
     def _do_query_for_author(self, params, n_authors):
         t_start = time.time()
@@ -195,14 +222,14 @@ class ADS_Buddy:
         for op, ou, oo in zip(article['orcid_pub'],
                               article['orcid_user'],
                               article['orcid_other']):
-            if op != '':
-                orcid_id.append(op)
+            if op != '' and is_orcid_id(op):
+                orcid_id.append(normalize_orcid_id(op))
                 orcid_src.append(1)
-            elif ou != '':
-                orcid_id.append(ou)
+            elif ou != '' and is_orcid_id(ou):
+                orcid_id.append(normalize_orcid_id(ou))
                 orcid_src.append(2)
-            elif oo != '':
-                orcid_id.append(oo)
+            elif oo != '' and is_orcid_id(oo):
+                orcid_id.append(normalize_orcid_id(oo))
                 orcid_src.append(3)
             else:
                 orcid_id.append('')
@@ -210,7 +237,7 @@ class ADS_Buddy:
         
         article['aff'] = ['' if x == '-' else x for x in article['aff']]
         
-        return DocumentRecord(
+        document = DocumentRecord(
             bibcode=article["bibcode"],
             title=(unescape(article["title"][0])
                    if "title" in article
@@ -234,11 +261,8 @@ class ADS_Buddy:
             orcid_ids=orcid_id,
             orcid_id_src=orcid_src
         )
-    
-    def _filter_invalid_authors(self, document):
-        """Alters a DocumentRecord in-place to remove invalid author names
         
-        Returns a list of the parsed ADSNames for the valid names."""
+        # Alter the DocumentRecord in-place to remove invalid author names
         bad_indices = []
         names = []
         for i, author in enumerate(document.authors):
@@ -258,7 +282,7 @@ class ADS_Buddy:
         for i in reversed(bad_indices):
             document.delete_author(i)
         
-        return names
+        return document
     
     def add_authors_to_prefetch_queue(self, *authors):
         for author in authors:
@@ -287,6 +311,34 @@ def is_bibcode(value):
         len(value) == 19
         and _is_int(value[0:4])
     )
+
+
+def is_orcid_id(value):
+    if not isinstance(value, str):
+        return False
+    value = value.strip()
+    if len(value) == 19:
+        if (value[4] != '-'
+                or value[9] != '-'
+                or value[14] != '-'):
+            return False
+        value = value.replace('-', '')
+    if len(value) == 16:
+        # 'X' is valid in the last character only
+        if value[-1] in 'Xx':
+            value = value[:-1]
+        # Otherwise, all characters must be digits
+        return _is_int(value)
+    return False
+
+
+def normalize_orcid_id(value):
+    """Assumes the given value is a valid ORCID ID, with or without dashes.
+    Returns the ORCID ID with dashes."""
+    value = value.strip()
+    if len(value) == 16:
+        return value.replace('-', '')
+    return value
 
 
 def _is_int(value):
