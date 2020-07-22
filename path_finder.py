@@ -352,23 +352,33 @@ class PathFinder:
         nodes_to_walk = [self.src]
         while len(nodes_to_walk):
             node = nodes_to_walk.pop()
-            for neighbor in list(node.neighbors_toward_dest):
-                if neighbor.dist_from_src != node.dist_from_src + 1:
-                    node.neighbors_toward_dest.remove(neighbor)
-                    node.links_toward_dest.pop(neighbor)
-                    
-                    neighbor.neighbors_toward_src.remove(node)
-                    neighbor.links_toward_src.pop(node)
-                else:
-                    nodes_to_walk.append(neighbor)
+            if len(node.neighbors_toward_dest):
+                dist_of_best_neighbor = min(
+                    (neighbor.dist_from_dest
+                     for neighbor in node.neighbors_toward_dest))
+                # Copy the set we're iterating over, since we mutate it
+                # in the loop
+                for neighbor in list(node.neighbors_toward_dest):
+                    if neighbor.dist_from_dest != dist_of_best_neighbor:
+                        node.neighbors_toward_dest.remove(neighbor)
+                        node.links_toward_dest.pop(neighbor)
+                        
+                        neighbor.neighbors_toward_src.remove(node)
+                        neighbor.links_toward_src.pop(node)
+                    else:
+                        nodes_to_walk.append(neighbor)
             
-            for neighbor in list(node.neighbors_toward_src):
-                if neighbor.dist_from_dest != node.dist_from_dest + 1:
-                    node.neighbors_toward_src.remove(neighbor)
-                    node.links_toward_src.pop(neighbor)
-                    
-                    neighbor.neighbors_toward_dest.remove(node)
-                    neighbor.links_toward_dest.pop(node)
+            if len(node.neighbors_toward_src):
+                dist_of_best_neighbor = min(
+                    (neighbor.dist_from_src
+                     for neighbor in node.neighbors_toward_src))
+                for neighbor in list(node.neighbors_toward_src):
+                    if neighbor.dist_from_src != dist_of_best_neighbor:
+                        node.neighbors_toward_src.remove(neighbor)
+                        node.links_toward_src.pop(neighbor)
+                        
+                        neighbor.neighbors_toward_dest.remove(node)
+                        neighbor.links_toward_dest.pop(node)
         
         # Step three: Remove nodes that aren't on a path between src and dest
         for name, node in self.nodes.items():
