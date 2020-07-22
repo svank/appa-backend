@@ -236,9 +236,8 @@ class PathFinder:
                 else:
                     ok_bibcodes = None
                 
-                for coauthor in record.coauthors:
+                for coauthor, bibcodes in record.coauthors.items():
                     # lb.d(f"  Checking coauthor {coauthor}")
-                    bibcodes = record.coauthors[coauthor]
                     if ok_bibcodes is not None:
                         bibcodes = [bibcode for bibcode in bibcodes
                                     if bibcode in ok_bibcodes]
@@ -329,11 +328,11 @@ class PathFinder:
         visited = set()
         while len(nodes_to_walk):
             node = nodes_to_walk.pop()
-            if node.name in visited:
+            if node in visited:
                 continue
-            visited.add(node.name)
+            visited.add(node)
             for neighbor in node.neighbors_toward_src:
-                if neighbor.name not in visited:
+                if neighbor not in visited:
                     nodes_to_walk.append(neighbor)
                 neighbor.neighbors_toward_dest.add(node)
                 neighbor.dist_from_dest = min(node.dist_from_dest + 1,
@@ -341,7 +340,7 @@ class PathFinder:
                 neighbor.links_toward_dest[node] = \
                     node.links_toward_src[neighbor]
             for neighbor in node.neighbors_toward_dest:
-                if neighbor.name not in visited:
+                if neighbor not in visited:
                     nodes_to_walk.append(neighbor)
                 neighbor.neighbors_toward_src.add(node)
                 neighbor.dist_from_src = min(node.dist_from_src + 1,
@@ -370,6 +369,7 @@ class PathFinder:
                     
                     neighbor.neighbors_toward_dest.remove(node)
                     neighbor.links_toward_dest.pop(node)
+        
         # Step three: Remove nodes that aren't on a path between src and dest
         for name, node in self.nodes.items():
             if node is self.src or node is self.dest:
