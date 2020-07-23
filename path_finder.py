@@ -1,3 +1,4 @@
+from collections import deque
 from typing import List, Set
 
 from ads_buddy import is_bibcode, is_orcid_id, normalize_orcid_id
@@ -324,10 +325,10 @@ class PathFinder:
     
     def produce_final_graph(self):
         # Step one: Make all linkages bidirectional
-        nodes_to_walk = list(self.connecting_nodes)
+        nodes_to_walk = deque(self.connecting_nodes)
         visited = set()
         while len(nodes_to_walk):
-            node = nodes_to_walk.pop()
+            node = nodes_to_walk.popleft()
             if node in visited:
                 continue
             visited.add(node)
