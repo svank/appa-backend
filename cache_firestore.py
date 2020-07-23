@@ -1,4 +1,5 @@
 import json
+import random
 import time
 import zlib
 
@@ -10,7 +11,8 @@ import local_config
 
 DOC_CACHE_COLLECTION = "documents"
 AUTHOR_CACHE_COLLECTION = "authors"
-PROGRESS_CACHE_COLLECTION = "progress"
+
+SHARDS = [chr(i) for i in range(65, 75)]
 
 db = firestore.Client()
 _batch = None
@@ -61,6 +63,7 @@ def _decompress_record(record):
 
 def store_document(data: dict, key: str):
     doc_ref = db.collection(DOC_CACHE_COLLECTION).document(key)
+    data['shard'] = random.choice(SHARDS)
     _set(doc_ref, data)
 
 
@@ -73,7 +76,12 @@ def load_document(key: str):
     doc_ref = db.collection(DOC_CACHE_COLLECTION).document(key)
     data = doc_ref.get()
     if data.exists:
-        return data.to_dict()
+        data = data.to_dict()
+        try:
+            del data['shard']
+        except KeyError:
+            pass
+        return data
     raise cache_buddy.CacheMiss(key)
 
 
@@ -81,12 +89,20 @@ def load_documents(keys: []):
     docs = db.get_all(
         [db.collection(DOC_CACHE_COLLECTION).document(key) for key in keys]
     )
-    return [doc.to_dict() for doc in docs]
+    docs = [doc.to_dict() for doc in docs]
+    for data in docs:
+        try:
+            del data['shard']
+        except KeyError:
+            pass
+    return docs
 
 
 def store_author(data: dict, key: str):
     doc_ref = db.collection(AUTHOR_CACHE_COLLECTION).document(key)
-    _set(doc_ref, _compress_record(data))
+    data = _compress_record(data)
+    data['shard'] = random.choice(SHARDS)
+    _set(doc_ref, data)
 
 
 def delete_author(key: str):
@@ -188,41 +204,41 @@ def load_progress_data(key: str):
 
 def clear_stale_data(authors=True, documents=True, progress=True):
     if authors:
-        author_collection = db.collection(AUTHOR_CACHE_COLLECTION)
-        author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
-        author_query = author_collection.where(
-            'timestamp', '<', author_thresh)
-        i = 0
-        with batch():
-            for doc in author_query.stream():
-                i += 1
-                _delete(author_collection.document(doc.id))
-        
-        author_query = author_collection.where(
-            'version', '<', cache_buddy.AUTHOR_VERSION_NUMBER)
-        with batch():
-            for doc in author_query.stream():
-                i += 1
-                _delete(author_collection.document(doc.id))
-        cache_buddy.log_buddy.lb.i(f"Cleared {i} authors")
+        _do_clear_data('author')
     
     if documents:
-        doc_collection = db.collection(DOC_CACHE_COLLECTION)
-        doc_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
-        doc_query = doc_collection.where('timestamp', '<', doc_thresh)
-        i = 0
-        with batch():
-            for doc in doc_query.stream():
+        _do_clear_data('document')
+
+
+def _do_clear_data(mode):
+    if mode == 'author':
+        collection = db.collection(AUTHOR_CACHE_COLLECTION)
+        version = cache_buddy.AUTHOR_VERSION_NUMBER
+        msg = "Cleared {} authors"
+    elif mode == 'document':
+        collection = db.collection(DOC_CACHE_COLLECTION)
+        version = cache_buddy.DOCUMENT_VERSION_NUMBER
+        msg = "Cleared {} documents"
+    else:
+        return
+    
+    author_thresh = time.time() - cache_buddy.MAXIMUM_AGE_AUTO
+    i = 0
+    with batch():
+        for shard_val in SHARDS:
+            query = (collection.where('shard', '==', shard_val)
+                               .where('timestamp', '<', author_thresh))
+            for doc in query.stream():
                 i += 1
-                _delete(doc_collection.document(doc.id))
-        
-        doc_query = doc_collection.where(
-            'version', '<', cache_buddy.DOCUMENT_VERSION_NUMBER)
-        with batch():
-            for doc in doc_query.stream():
+                _delete(collection.document(doc.id))
+            
+            query = (collection.where('shard', '==', shard_val)
+                               .where('version', '<', version))
+            for doc in query.stream():
                 i += 1
-                _delete(doc_collection.document(doc.id))
-        cache_buddy.log_buddy.lb.i(f"Cleared {i} documents")
+                _delete(collection.document(doc.id))
+    
+    cache_buddy.log_buddy.lb.i(msg.format(i))
 
 
 def _set(doc_ref, data):

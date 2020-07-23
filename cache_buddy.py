@@ -18,8 +18,8 @@ MAXIMUM_AGE_AUTO = MAXIMUM_AGE - 1.1 * 24 * 60 * 60
 MAXIMUM_PROGRESS_AGE = 30 * 60  # 30 min in seconds
 
 # Cache data format version numbers
-AUTHOR_VERSION_NUMBER = 1
-DOCUMENT_VERSION_NUMBER = 1
+AUTHOR_VERSION_NUMBER = 2
+DOCUMENT_VERSION_NUMBER = 2
 
 
 _loaded_documents = dict()
