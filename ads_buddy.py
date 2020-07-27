@@ -57,7 +57,8 @@ class ADS_Buddy:
         
         documents = self._inner_query_for_author(query, 1)
         
-        author_record = AuthorRecord(name=None, documents=[])
+        author_record = AuthorRecord(
+            name=ADSName.parse(orcid_id, preserve=True), documents=[])
         names = set()
         for document in documents:
             try:
@@ -69,10 +70,11 @@ class ADS_Buddy:
             names.add(document.authors[i])
         
         # Find the most-detailed form of the name
-        names = [ADSName.parse(n) for n in names]
-        intermed = [(n.level_of_detail, len(n.full_name), n) for n in names]
-        intermed.sort(reverse=True)
-        author_record.name = intermed[0][-1]
+        if len(names):
+            names = [ADSName.parse(n) for n in names]
+            intermed = [(n.level_of_detail, len(n.full_name), n) for n in names]
+            intermed.sort(reverse=True)
+            author_record.name = intermed[0][-1]
         return author_record, documents
     
     def get_papers_for_author(self, query_author):
