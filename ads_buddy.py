@@ -337,7 +337,7 @@ def normalize_orcid_id(value):
     Returns the ORCID ID with dashes."""
     value = value.strip()
     if len(value) == 16:
-        return value.replace('-', '')
+        return f"{value[0:4]}-{value[4:8]}-{value[8:12]}-{value[12:16]}"
     return value
 
 
