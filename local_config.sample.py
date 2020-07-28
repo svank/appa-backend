@@ -3,8 +3,8 @@ import os
 backing_cache = "cache_fs"
 cache_fs_dir = "cache"
 
-# For firestore:
-# backing_cache = "cache_firestore"
+# For running in GCP:
+# backing_cache = "cache_gcp"
 # relay_token = "token_here"
 
 ADS_TOKEN = "token_here"

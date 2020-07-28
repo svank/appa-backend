@@ -15,13 +15,13 @@ import local_config
 local_config.backing_cache = "cache_firestore"
 
 from cache_buddy import CacheMiss
-import cache_firestore
+import cache_gcp
 
 try:
     if sys.argv[1] == 'author':
-        result = cache_firestore.load_author(sys.argv[2])
+        result = cache_gcp.load_author(sys.argv[2])
     elif sys.argv[1] == 'doc':
-        result = cache_firestore.load_document(sys.argv[2])
+        result = cache_gcp.load_document(sys.argv[2])
     else:
         print("First arg must be 'author' or 'doc'")
         sys.exit()
