@@ -2,8 +2,8 @@ import time
 
 from flask import Flask, request
 
+import backend_common
 import cache_buddy
-from backend_common import _find_route, _get_progress
 from log_buddy import lb
 
 app = Flask(__name__)
@@ -19,10 +19,10 @@ def clear_cache():
 
 @app.route('/find_route', methods=['GET', 'POST'])
 def find_route():
-    data, code, headers, cache_key = _find_route(request)
+    data, code, headers, cache_key = backend_common.find_route(request)
     return data, code, headers
 
 
 @app.route('/get_progress')
 def get_progress():
-    return _get_progress(request)
+    return backend_common.get_progress(request)

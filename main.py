@@ -4,8 +4,8 @@ Entry points for Cloud Functions. For local usage, see appa.py
 
 import json
 
+import backend_common
 import cache_buddy
-from backend_common import _find_route
 from log_buddy import lb
 
 # Cloud Function responses cannot be larger than 10 MiB. If our response
@@ -20,7 +20,7 @@ lb.i("Instance cold start")
 
 
 def find_route(request):
-    data, code, headers, cache_key = _find_route(
+    data, code, headers, cache_key = backend_common.find_route(
         request, load_cached_result=False)
     
     if data is None:

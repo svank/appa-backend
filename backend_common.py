@@ -9,7 +9,7 @@ from route_jsonifyer import to_json
 HEADERS = {'Access-Control-Allow-Origin': '*'}
 
 
-def _find_route(request, load_cached_result=True):
+def find_route(request, load_cached_result=True):
     source, dest, exclude = parse_url_args(request)
     
     result_cache_key = cache_buddy.generate_result_cache_key(
@@ -75,7 +75,7 @@ def _find_route(request, load_cached_result=True):
     return data, 200, HEADERS, result_cache_key
 
 
-def _get_progress(request):
+def get_progress(request):
     key = request.args.get('key')
     try:
         data = cache_buddy.load_progress_data(key)
