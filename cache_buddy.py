@@ -1,3 +1,4 @@
+import hashlib
 import importlib
 import time
 import traceback
@@ -309,6 +310,24 @@ def load_progress_data(key):
         raise CacheMiss("stale cache data: " + key)
     
     return record
+
+
+def generate_result_cache_key(src, dest, exclusions):
+    exclusions = sorted(exclusions)
+    key = f"src: {src}, dest: {dest}, excl: {exclusions}"
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def cache_result(result, key):
+    backing_cache.store_result(result, key)
+
+
+def result_is_in_cache(key):
+    return backing_cache.result_is_in_cache(key)
+
+
+def load_result(key):
+    return backing_cache.load_result(key)
 
 
 def clear_stale_data(**kwargs):

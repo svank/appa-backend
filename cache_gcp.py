@@ -4,7 +4,7 @@ import time
 import zlib
 
 import requests
-from google.cloud import firestore
+from google.cloud import exceptions, firestore, storage
 
 import cache_buddy
 import local_config
@@ -14,6 +14,7 @@ AUTHOR_CACHE_COLLECTION = "authors"
 
 SHARDS = [chr(i) for i in range(65, 75)]
 
+storage_client = storage.Client()
 db = firestore.Client()
 _batch = None
 _batch_size = 0
@@ -202,7 +203,28 @@ def load_progress_data(key: str):
     raise cache_buddy.CacheMiss(key)
 
 
-def clear_stale_data(authors=True, documents=True, progress=True):
+def store_result(data, key):
+    bucket = storage_client.bucket(local_config.CLOUD_STORAGE_BUCKET_NAME)
+    blob = bucket.blob(key)
+    blob.upload_from_string(data)
+
+
+def result_is_in_cache(key):
+    bucket = storage_client.bucket(local_config.CLOUD_STORAGE_BUCKET_NAME)
+    return storage.Blob(bucket=bucket, name=key).exists(storage_client)
+
+
+def load_result(key):
+    bucket = storage_client.bucket(local_config.CLOUD_STORAGE_BUCKET_NAME)
+    blob = bucket.blob(key)
+    try:
+        return blob.download_as_string().decode()
+    except exceptions.NotFound:
+        return cache_buddy.CacheMiss(key)
+
+
+def clear_stale_data(authors=True, documents=True,
+                     progress=True, results=True):
     if authors:
         _do_clear_data('author')
     

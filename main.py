@@ -2,6 +2,8 @@
 Entry points for Cloud Functions. For local usage, see appa.py
 """
 
+import json
+
 import cache_buddy
 from backend_common import _find_route
 from log_buddy import lb
@@ -18,24 +20,19 @@ lb.i("Instance cold start")
 
 
 def find_route(request):
-    data, code, headers = _find_route(request)
+    data, code, headers, cache_key = _find_route(
+        request, load_cached_result=False)
+    
+    if data is None:
+        # The result is already cached---refer the user to the cache file
+        response = {"responseAtUrl": CLOUD_STORAGE_URL_FORMAT.format(
+            CLOUD_STORAGE_BUCKET_NAME, cache_key)}
+        return json.dumps(response), code, headers
     
     if len(data.encode('utf-8')) > MAXIMUM_RESPONSE_SIZE:
-        # It's rare we need these imports, so don't do it unless we need them
-        from google.cloud import storage
-        import hashlib
-        import json
-        
-        lb.i("Storing large result for separate download")
-        
-        storage_client = storage.Client()
-        bucket = storage_client.bucket(CLOUD_STORAGE_BUCKET_NAME)
-        blob_name = hashlib.sha256(data.encode()).hexdigest()
-        blob = bucket.blob(blob_name)
-        blob.upload_from_string(data)
-        
+        lb.i("Sending large result as separate download")
         response = {"responseAtUrl": CLOUD_STORAGE_URL_FORMAT.format(
-            CLOUD_STORAGE_BUCKET_NAME, blob_name)}
+            CLOUD_STORAGE_BUCKET_NAME, cache_key)}
         return json.dumps(response), code, headers
     return data, code, headers
 

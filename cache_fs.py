@@ -1,6 +1,7 @@
 import contextlib
 import json
 import os
+import time
 
 import cache_buddy
 import local_config
@@ -8,6 +9,7 @@ import local_config
 DOC_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "documents")
 AUTHOR_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "authors")
 PROGRESS_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "progress")
+RESULT_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "results")
 _author_cache_contents = set()
 
 
@@ -15,6 +17,7 @@ def refresh():
     os.makedirs(DOC_CACHE_SUBDIR, exist_ok=True)
     os.makedirs(AUTHOR_CACHE_SUBDIR, exist_ok=True)
     os.makedirs(PROGRESS_CACHE_SUBDIR, exist_ok=True)
+    os.makedirs(RESULT_CACHE_SUBDIR, exist_ok=True)
     global _author_cache_contents
     _author_cache_contents = set(os.listdir(AUTHOR_CACHE_SUBDIR))
 
@@ -121,8 +124,34 @@ def load_progress_data(key: str):
         raise cache_buddy.CacheMiss(key)
 
 
-def clear_stale_data(authors=True, documents=True, progress=True):
-    # Hack: use a different age threshold wile loading records
+def store_result(data, key):
+    fname = os.path.join(RESULT_CACHE_SUBDIR, key)
+    try:
+        open(fname, "w").write(data)
+    except FileNotFoundError:
+        refresh()
+        open(fname, "w").write(data)
+
+
+def result_is_in_cache(key):
+    try:
+        load_result(key)
+        return True
+    except cache_buddy.CacheMiss:
+        return False
+
+
+def load_result(key):
+    fname = os.path.join(RESULT_CACHE_SUBDIR, key)
+    try:
+        return open(fname).read()
+    except FileNotFoundError:
+        raise cache_buddy.CacheMiss(key)
+
+
+def clear_stale_data(authors=True, documents=True,
+                     progress=True, results=True):
+    # Hack: use a different age threshold while loading records
     age_store = cache_buddy.MAXIMUM_AGE
     cache_buddy.MAXIMUM_AGE = cache_buddy.MAXIMUM_AGE_AUTO
     
@@ -149,6 +178,14 @@ def clear_stale_data(authors=True, documents=True, progress=True):
                 pass
     
     cache_buddy.MAXIMUM_AGE = age_store
+    
+    if results:
+        now = time.time()
+        for key in os.listdir(RESULT_CACHE_SUBDIR):
+            fname = os.path.join(RESULT_CACHE_SUBDIR, key)
+            tstamp = os.path.getmtime(fname)
+            if now - tstamp > 60 * 60:
+                os.remove(fname)
 
 
 # A dummy batch manager

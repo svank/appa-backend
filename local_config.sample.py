@@ -24,7 +24,7 @@ if os.path.exists(name_synonym_dir):
 else:
     name_synonym_lists = []
 
-# Bucket name used for storing over-sized outputs when running in GCP
+# Bucket name used for storing cached outputs when running in GCP
 # CLOUD_STORAGE_BUCKET_NAME = ""
 
 import logging

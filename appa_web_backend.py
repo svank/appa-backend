@@ -9,7 +9,8 @@ lb.set_log_level(lb.INFO)
 
 @app.route('/find_route', methods=['GET', 'POST'])
 def find_route():
-    return _find_route(request)
+    data, code, headers, cache_key = _find_route(request)
+    return data, code, headers
 
 
 @app.route('/get_progress')
