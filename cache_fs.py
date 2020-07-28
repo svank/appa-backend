@@ -151,36 +151,30 @@ def load_result(key):
 
 def clear_stale_data(authors=True, documents=True,
                      progress=True, results=True):
-    # Hack: use a different age threshold while loading records
-    age_store = cache_buddy.MAXIMUM_AGE
-    cache_buddy.MAXIMUM_AGE = cache_buddy.MAXIMUM_AGE_AUTO
+    now = time.time()
     
-    # Cached data is automatically deleted upon load if it's expired
     if authors:
-        for author in os.listdir(AUTHOR_CACHE_SUBDIR):
-            try:
-                cache_buddy.load_author(author)
-            except cache_buddy.CacheMiss:
-                pass
+        for key in os.listdir(AUTHOR_CACHE_SUBDIR):
+            fname = os.path.join(AUTHOR_CACHE_SUBDIR, key)
+            tstamp = os.path.getmtime(fname)
+            if now - tstamp > cache_buddy.MAXIMUM_AGE_AUTO:
+                os.remove(fname)
     
     if documents:
-        for document in os.listdir(DOC_CACHE_SUBDIR):
-            try:
-                cache_buddy.load_document(document)
-            except cache_buddy.CacheMiss:
-                pass
+        for key in os.listdir(DOC_CACHE_SUBDIR):
+            fname = os.path.join(DOC_CACHE_SUBDIR, key)
+            tstamp = os.path.getmtime(fname)
+            if now - tstamp > cache_buddy.MAXIMUM_AGE_AUTO:
+                os.remove(fname)
     
     if progress:
         for key in os.listdir(PROGRESS_CACHE_SUBDIR):
-            try:
-                cache_buddy.load_progress_data(key)
-            except cache_buddy.CacheMiss:
-                pass
-    
-    cache_buddy.MAXIMUM_AGE = age_store
+            fname = os.path.join(PROGRESS_CACHE_SUBDIR, key)
+            tstamp = os.path.getmtime(fname)
+            if now - tstamp > cache_buddy.MAXIMUM_PROGRESS_AGE:
+                os.remove(fname)
     
     if results:
-        now = time.time()
         for key in os.listdir(RESULT_CACHE_SUBDIR):
             fname = os.path.join(RESULT_CACHE_SUBDIR, key)
             tstamp = os.path.getmtime(fname)
