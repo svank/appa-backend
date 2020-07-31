@@ -1,3 +1,7 @@
+"""
+Handles preparing data to send to the user's browser
+"""
+
 import json
 import time
 
@@ -5,6 +9,7 @@ import route_ranker
 from ads_buddy import is_orcid_id
 from ads_name import ADSName
 from log_buddy import lb
+from name_aware import NameAwareDict
 from path_finder import PathFinder
 from repository import Repository
 
@@ -135,3 +140,26 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
     
     final_name = ADSName.parse(alias.last_name, *gns, preserve=True)
     return final_name.full_name
+
+
+def canonicalize_graph_data(chains):
+    # We have a list of chains---the table in the web view. These chains
+    # may contain many different forms of a name, and it's important to
+    # preserve that for the table display. But for the graph display, it's
+    # better to collapse down to one node per person, not one node per
+    # name form. So within each column, we want to canonicalize each name
+    # to the least-detailed form of that name appearing in the column.
+    for i in range(len(chains[0])):
+        # This dict will map names to canonical forms
+        nad = NameAwareDict()
+        for chain in chains:
+            name = ADSName.parse(chain[i])
+            if name in nad:
+                if name.level_of_detail < nad[name].level_of_detail:
+                    nad[name] = name
+            else:
+                nad[name] = name
+        for chain in chains:
+            name = chain[i]
+            chain[i] = nad[name].original_name
+    return chains

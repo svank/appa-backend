@@ -26,3 +26,8 @@ def find_route():
 @app.route('/get_progress')
 def get_progress():
     return backend_common.get_progress(request)
+
+
+@app.route('/get_graph_data')
+def get_graph_data():
+    return backend_common.get_graph_data(request)

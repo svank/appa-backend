@@ -4,7 +4,7 @@ import cache_buddy
 from ads_buddy import ADSError, ADSRateLimitError
 from log_buddy import lb
 from path_finder import PathFinder, PathFinderError
-from route_jsonifyer import to_json
+from route_jsonifyer import to_json, canonicalize_graph_data
 
 HEADERS = {'Access-Control-Allow-Origin': '*'}
 
@@ -67,11 +67,11 @@ def find_route(request, load_cached_result=True):
             "src": source,
             "dest": dest
         })
+    else:
+        cache_buddy.cache_result(data, result_cache_key)
     
     lb.log_stats()
     lb.reset_stats()
-    
-    cache_buddy.cache_result(data, result_cache_key)
     return data, 200, HEADERS, result_cache_key
 
 
@@ -83,6 +83,26 @@ def get_progress(request):
     except:
         response = json.dumps({"error": True})
     return response, 200, HEADERS
+
+
+def get_graph_data(request):
+    source, dest, exclude = parse_url_args(request)
+    
+    result_cache_key = cache_buddy.generate_result_cache_key(
+        source, dest, exclude)
+
+    if cache_buddy.result_is_in_cache(result_cache_key):
+        data = cache_buddy.load_result(result_cache_key)
+        data = json.loads(data)
+        chains = data['chains']
+        chains = canonicalize_graph_data(chains)
+        data = {'graphData': chains}
+    else:
+        data = {"error": "data not found"}
+        lb.w(f"Graph source data unavailable for src:{source}, dest:{dest}, "
+             f"excl:{';'.join(sorted(exclude))}")
+    data = json.dumps(data)
+    return data, 200, HEADERS
 
 
 def parse_url_args(request):

@@ -37,6 +37,10 @@ def find_route(request):
     return data, code, headers
 
 
+def get_graph_data(request):
+    return backend_common.get_graph_data(request)
+
+
 def clean_cache(request):
     cache_buddy.clear_stale_data()
 
