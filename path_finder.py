@@ -96,7 +96,13 @@ class PathFinder:
                 elif is_bibcode(name):
                     self.excluded_bibcodes.add(name)
                 else:
-                    self.excluded_names.add(ADSName.parse(name))
+                    try:
+                        self.excluded_names.add(ADSName.parse(name))
+                    except InvalidName:
+                        raise PathFinderError(
+                            "invalid_excl",
+                            f"'{name}' is an invalid name to exclude.")
+                        
         
         self.repository.notify_of_upcoming_author_request(*names_to_be_queried)
         self.authors_to_expand_src = []
