@@ -266,7 +266,9 @@ def _do_clear_data(mode):
 def _set(doc_ref, data):
     global _batch, _batch_size, _batch_bytes
     if _batch is None:
+        start = time.time()
         doc_ref.set(data)
+        cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
     else:
         _batch.set(doc_ref, data)
         _batch_size += 1
@@ -278,7 +280,10 @@ def _set(doc_ref, data):
             _batch_bytes += len(
                 json.dumps(data, check_circular=False).encode('utf-8'))
         if _batch_size >= MAX_OPS or _batch_bytes > MAX_API_CALL_SIZE:
+            start = time.time()
             _batch.commit()
+            cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
+            
             _batch = db.batch()
             _batch_size = 0
             _batch_bytes = 0
@@ -287,15 +292,21 @@ def _set(doc_ref, data):
 def _delete(doc_ref):
     global _batch, _batch_size, _batch_bytes
     if _batch is None:
+        start = time.time()
         doc_ref.delete()
+        cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
     else:
         _batch.delete(doc_ref)
         _batch_size += 1
         _batch_bytes += 400  # NO idea what to put here
         if _batch_size >= MAX_OPS or _batch_bytes > MAX_API_CALL_SIZE:
+            start = time.time()
             _batch.commit()
+            cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
+            
             _batch = db.batch()
             _batch_size = 0
+            _batch_bytes = 0
 
 
 class BatchManager:
@@ -313,7 +324,10 @@ class BatchManager:
             return False
         if self.is_managing:
             if _batch is not None and _batch_size > 0:
+                start = time.time()
                 _batch.commit()
+                cache_buddy.log_buddy.lb.on_cache_store_timed(
+                    time.time() - start)
             _batch = None
             _batch_size = 0
             _batch_bytes = 0

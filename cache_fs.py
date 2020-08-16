@@ -28,16 +28,20 @@ refresh()
 def store_document(data: dict, key: str):
     fname = os.path.join(DOC_CACHE_SUBDIR, key)
     data = json.dumps(data, check_circular=False)
+    start = time.time()
     try:
         open(fname, "w").write(data)
     except FileNotFoundError:
         refresh()
         open(fname, "w").write(data)
+    cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
 
 
 def delete_document(key: str):
     fname = os.path.join(DOC_CACHE_SUBDIR, key)
+    start = time.time()
     os.remove(fname)
+    cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
 
 
 def load_document(key: str):
@@ -57,17 +61,21 @@ def load_documents(keys: []):
 def store_author(data: dict, key: str):
     fname = os.path.join(AUTHOR_CACHE_SUBDIR, key)
     data = json.dumps(data, check_circular=False)
+    start = time.time()
     try:
         open(fname, "w").write(data)
     except FileNotFoundError:
         refresh()
         open(fname, "w").write(data)
+    cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
     _author_cache_contents.add(key)
 
 
 def delete_author(key: str):
     fname = os.path.join(AUTHOR_CACHE_SUBDIR, key)
+    start = time.time()
     os.remove(fname)
+    cache_buddy.log_buddy.lb.on_cache_store_timed(time.time() - start)
     if key in _author_cache_contents:
         _author_cache_contents.remove(key)
 
