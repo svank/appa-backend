@@ -35,11 +35,6 @@ def store_document(data: dict, key: str):
         open(fname, "w").write(data)
 
 
-def store_documents(datas: [], keys: []):
-    for data, key in zip(datas, keys):
-        store_document(data, key)
-
-
 def delete_document(key: str):
     fname = os.path.join(DOC_CACHE_SUBDIR, key)
     os.remove(fname)
