@@ -77,6 +77,7 @@ def to_json(path_finder: PathFinder):
             'n_authors_queried': lb.n_authors_queried,
             'n_names_seen': lb.n_coauthors_seen,
             'n_network_queries': lb.n_network_queries,
+            'n_authors_from_ads': lb.n_authors_from_ADS,
             'time_waiting_network': sum(lb.time_waiting_network),
             'total_time': lb.get_search_time() + lb.get_result_prep_time()
         }
