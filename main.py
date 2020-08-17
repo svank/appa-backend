@@ -20,21 +20,24 @@ lb.i("Instance cold start")
 
 
 def find_route(request):
-    data, code, headers, cache_key = backend_common.find_route(
-        request, load_cached_result=False)
-    
-    if data is None:
-        # The result is already cached---refer the user to the cache file
-        response = {"responseAtUrl": CLOUD_STORAGE_URL_FORMAT.format(
-            CLOUD_STORAGE_BUCKET_NAME, cache_key)}
-        return json.dumps(response), code, headers
-    
-    if len(data.encode('utf-8')) > MAXIMUM_RESPONSE_SIZE:
-        lb.i("Sending large result as separate download")
-        response = {"responseAtUrl": CLOUD_STORAGE_URL_FORMAT.format(
-            CLOUD_STORAGE_BUCKET_NAME, cache_key)}
-        return json.dumps(response), code, headers
-    return data, code, headers
+    try:
+        data, code, headers, cache_key = backend_common.find_route(
+            request, load_cached_result=False)
+        
+        if data is None:
+            # The result is already cached---refer the user to the cache file
+            response = {"responseAtUrl": CLOUD_STORAGE_URL_FORMAT.format(
+                CLOUD_STORAGE_BUCKET_NAME, cache_key)}
+            return json.dumps(response), code, headers
+        
+        if len(data.encode('utf-8')) > MAXIMUM_RESPONSE_SIZE:
+            lb.i("Sending large result as separate download")
+            response = {"responseAtUrl": CLOUD_STORAGE_URL_FORMAT.format(
+                CLOUD_STORAGE_BUCKET_NAME, cache_key)}
+            return json.dumps(response), code, headers
+        return data, code, headers
+    except:
+        lb.log_exception()
 
 
 def get_graph_data(request):
