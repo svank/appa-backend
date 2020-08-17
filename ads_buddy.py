@@ -84,10 +84,10 @@ class ADS_Buddy:
         if query_author not in query_authors:
             query_authors.append(query_author)
         
-        lb.i(f"Querying ADS for author " + query_author)
+        lb.i(f"Querying ADS for author " + query_author.qualified_full_name)
         if len(query_authors) > 1:
             lb.i(" Also prefetching. Query: " + "; ".join(
-                [str(a) for a in query_authors]))
+                [a.qualified_full_name for a in query_authors]))
         
         query_strings = []
         for author in query_authors:

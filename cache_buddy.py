@@ -6,6 +6,7 @@ import traceback
 import local_config
 # Can't use `from log_buddy import lb` b/c it would be a circular import
 import log_buddy
+from ads_name import ADSName
 from author_record import AuthorRecord
 from document_record import DocumentRecord
 from progress_record import ProgressRecord
@@ -162,7 +163,7 @@ def _prepare_loaded_document(data):
 
 def cache_author(author_record: AuthorRecord, cache_key=None):
     if cache_key is None:
-        cache_key = str(author_record.name)
+        cache_key = author_record.name.qualified_full_name
     if not key_is_valid(cache_key):
         raise RuntimeError("Invalid key for caching: " + cache_key)
     _loaded_authors[cache_key] = author_record
@@ -181,8 +182,9 @@ def cache_authors(author_records: []):
             cache_author(author_record)
 
 
-def delete_author(name):
-    cache_key = str(name)
+def delete_author(cache_key):
+    if type(cache_key) == ADSName:
+        cache_key = cache_key.qualified_full_name
     try:
         backing_cache.delete_author(cache_key)
     except:
@@ -193,14 +195,16 @@ def delete_author(name):
         del _loaded_authors[cache_key]
 
 
-def author_is_in_cache(name):
-    cache_key = str(name)
+def author_is_in_cache(cache_key):
+    if type(cache_key) == ADSName:
+        cache_key = cache_key.qualified_full_name
     return (cache_key in _loaded_authors
             or backing_cache.author_is_in_cache(cache_key))
 
 
 def authors_are_in_cache(names):
-    names = [str(name) for name in names]
+    names = [name.qualified_full_name if type(name) == ADSName else name
+             for name in names]
     
     # We'll do an out-of-order mix of checking our in-memory cache one-by-one
     # and checking our backing cache in one batch. So here's a name-to-value
@@ -222,7 +226,8 @@ def authors_are_in_cache(names):
 
 
 def load_author(cache_key):
-    cache_key = str(cache_key)
+    if type(cache_key) == ADSName:
+        cache_key = cache_key.qualified_full_name
     try:
         record = _loaded_authors[cache_key]
     except KeyError:
@@ -240,7 +245,8 @@ def load_author(cache_key):
 
 def load_authors(cache_keys):
     """Note: records are not guaranteed to be returned in the order given"""
-    cache_keys = [str(key) for key in cache_keys]
+    cache_keys = [name.qualified_full_name if type(name) == ADSName else name
+                  for name in cache_keys]
     need_to_load = []
     records = []
     for key in cache_keys:

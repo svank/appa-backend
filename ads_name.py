@@ -61,7 +61,7 @@ class ADSName:
     __slots__ = ['_last_name', '_given_names', '_require_exact',
                  '_require_less_specific', '_require_more_specific',
                  '_allow_same_specific', '_original_name', '_full_name',
-                 '_qualified_full_name', '_equality_cache']
+                 '_qualified_full_name', '_equality_cache', '_synonym']
     _last_name: str
     _given_names: Tuple[str]
     
@@ -73,6 +73,7 @@ class ADSName:
     _original_name: str
     _full_name: str
     _qualified_full_name: str
+    _synonym: ADSName
     
     _equality_cache: {}
     
@@ -118,6 +119,7 @@ class ADSName:
         
         self._equality_cache = {}
         self._qualified_full_name = None
+        self._synonym = None
         
         if len(given_names):
             self._original_name = f"{last_name}, {' '.join(given_names)}"
@@ -199,14 +201,11 @@ class ADSName:
         if self.last_name == '':
             raise InvalidName("Computed last name is empty")
         
-        if not preserve and self in _name_synonyms:
-            synonym = _name_synonyms[self]
-            self._qualified_full_name = None
-            
-            if synonym.last_varies:
-                self._last_name = synonym.canonical._last_name
-            if synonym.given_varies:
-                self._given_names = synonym.canonical._given_names
+        if not preserve:
+            try:
+                self._synonym = _name_synonyms[self]
+            except KeyError:
+                pass
     
     def __eq__(self, other):
         """Checks equality by my understanding of ADS's name-matching rules.
@@ -250,6 +249,13 @@ class ADSName:
                 else:
                     equal = True
         
+        if not equal and self._synonym is not None:
+            # Inside self._synonym.__eq__, `self._synonym == other._synonym`
+            # will be checked.
+            equal = self._synonym == other
+        if not equal and other._synonym is not None:
+            equal = other._synonym == self
+            
         self._equality_cache[other.qualified_full_name] = equal
         other._equality_cache[self.qualified_full_name] = equal
         return equal
@@ -309,6 +315,9 @@ class ADSName:
         return more_specific
     
     def __str__(self):
+        if self._synonym is not None:
+            return (f'{self.qualified_full_name}'
+                    f' (possibly AKA "{self._synonym}")')
         return self.qualified_full_name
     
     def __repr__(self):
@@ -389,6 +398,10 @@ class ADSName:
                 and not self._allow_same_specific)
     
     @property
+    def synonym(self):
+        return self._synonym
+    
+    @property
     def original_name(self):
         return self._original_name
 
@@ -455,7 +468,7 @@ class ADSName:
                 or self._require_more_specific)
 
 
-def _parse_name_synonyms(synonym_list, mapping: name_aware.NameAwareDict):
+def _parse_name_synonyms(synonym_list):
     if len(_name_cache):
         raise RuntimeError(
             "Name synonyms must not be added after names are parsed")
@@ -464,7 +477,7 @@ def _parse_name_synonyms(synonym_list, mapping: name_aware.NameAwareDict):
         if len(synonym) == 0 or synonym[0] == '#' or ';' not in synonym:
             continue
         names = synonym.split(";")
-        names = [ADSName.parse(name) for name in names]
+        names = [ADSName.parse(name.strip()) for name in names]
         
         # We need to choose one variant to be canonical. Let's choose one with
         # the highest level of detail. As tie-breakers, choose variants with
@@ -483,24 +496,22 @@ def _parse_name_synonyms(synonym_list, mapping: name_aware.NameAwareDict):
         # Our variants are sorted with the most detailed forms first. Our
         # NameAwareDict will end up with the less-detailed forms as keys.
         for variant in variants:
-            mapping[variant] = Synonym(
-                canonical,
-                variant._last_name != canonical._last_name,
-                variant._given_names != canonical._given_names)
+            _name_synonyms[variant] = canonical
+            # Just in case any equality checking happens during the sort
+            canonical._equality_cache = {}
+            variant._equality_cache = {}
     # The process of parsing these synonyms has populated the name cache
-    # with instances that are now invalid. Purge them.
+    # with instances that are now invalid (because they don't have synonyms
+    # set). Purge them.
     _name_cache.clear()
 
 
-class Synonym:
-    def __init__(self, canonical, last_varies, given_varies):
-        self.canonical = canonical
-        self.last_varies = last_varies
-        self.given_varies = given_varies
+def _load_synonyms():
+    for fname in local_config.name_synonym_lists:
+        _parse_name_synonyms(open(fname).readlines())
 
 
-for fname in local_config.name_synonym_lists:
-    _parse_name_synonyms(open(fname).readlines(), _name_synonyms)
+_load_synonyms()
 
 
 class InvalidName(RuntimeError):

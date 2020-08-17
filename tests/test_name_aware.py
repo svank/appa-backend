@@ -1,5 +1,6 @@
 from unittest import TestCase
 
+import ads_name
 from ads_name import ADSName
 from name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
@@ -181,6 +182,84 @@ class TestNameAwareDict(TestCase):
             self.assertIn(lte, nad)
             self.assertNotIn(gt, nad)
             self.assertIn(ex, nad)
+    
+    def test_with_synonyms(self):
+        synonyms = [
+            "test_synAA; test_synAB",
+            "test_synB, a; test_synB, b",
+            "test_synCA, q; test_synCB, q",
+            "test_synD, a; test_synD, b c",
+            "test_synEB, b; test_synEA, a",
+            "test_synFA, a b c d; test_synFB, a",
+            "test_synGA, a b c d; test_synGB, a; test_synGC, b"
+        ]
+        # Hack: inject test synonyms
+        ads_name._name_cache.clear()
+        ads_name._parse_name_synonyms(synonyms)
+        
+        for synonym in synonyms:
+            names = synonym.split(';')
+            
+            # The second copy is for the deletion tests later
+            nad = NameAwareDict()
+            nad2 = NameAwareDict()
+            for i, name in enumerate(names):
+                nad[name] = i
+                nad2[name] = i
+            
+            # Do the insertion in both orders, to ensure we try both
+            # "canonical first" and "canonical last"
+            nad_rev = NameAwareDict()
+            nad_rev2 = NameAwareDict()
+            for i, name in enumerate(reversed(names)):
+                nad_rev[name] = i
+                nad_rev2[name] = i
+
+            # Ensure that, after inserting under one form and updating under
+            # the other form, we can get the latest value from either form.
+            for name in names:
+                self.assertEqual(nad[name], i)
+                self.assertEqual(nad_rev[name], i)
+            
+            # Check other misc methods
+            for name in names:
+                self.assertIn(name, nad)
+                self.assertIn(name, nad_rev)
+            
+            self.assertEqual(len(nad), 1)
+            self.assertEqual(len(nad_rev), 1)
+            
+            self.assertEqual(nad.keys(), (ADSName.parse(names[-1]),))
+            self.assertEqual(nad_rev.keys(), (ADSName.parse(names[0]),))
+            
+            self.assertEqual(nad.values(), (i,))
+            self.assertEqual(nad_rev.values(), (i,))
+            
+            # Ensure that deleting one form deletes them all.
+            del nad[names[0]]
+            self.assertEqual(len(nad), 0)
+            for name in names:
+                self.assertNotIn(name, nad)
+            
+            del nad2[names[1]]
+            self.assertEqual(len(nad2), 0)
+            for name in names:
+                self.assertNotIn(name, nad2)
+            
+            del nad_rev[names[0]]
+            self.assertEqual(len(nad_rev), 0)
+            for name in names:
+                self.assertNotIn(name, nad_rev)
+            
+            del nad_rev2[names[1]]
+            self.assertEqual(len(nad_rev2), 0)
+            for name in names:
+                self.assertNotIn(name, nad_rev2)
+        
+        # Remove our test synonyms
+        ads_name._name_cache.clear()
+        ads_name._name_synonyms.clear()
+        ads_name._load_synonyms()
 
 
 class TestNameAwareSet(TestCase):
@@ -238,3 +317,28 @@ class TestNameAwareSet(TestCase):
         
         self.assertEqual(sorted(nas.values()),
                          sorted([equal_names_str[-1], *diff_names_str]))
+
+    def test_with_synonyms(self):
+        synonyms = [
+            "test_synAA;test_synAB",
+            "test_synBB, ;test_synBA,",
+            "test_synCA, q; test_synCB, q",
+            "test_synD, a; test_synD, b c",
+            "test_synEB, b; test_synEA, a",
+            "test_synFA, a b c d; test_synFB, a"
+        ]
+        # Hack: inject test synonyms
+        ads_name._name_cache.clear()
+        ads_name._parse_name_synonyms(synonyms)
+
+        nas = NameAwareSet()
+        for synonym in synonyms:
+            names = synonym.split(';')
+            for name in names:
+                nas.add(name)
+        self.assertEqual(len(nas), len(synonyms))
+    
+        # Remove our test synonyms
+        ads_name._name_cache.clear()
+        ads_name._name_synonyms.clear()
+        ads_name._load_synonyms()
