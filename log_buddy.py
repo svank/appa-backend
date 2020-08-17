@@ -158,6 +158,14 @@ class LogBuddy:
                " to/from backing cache")
         self.i(f"Search took {self.get_search_time():.2f} s")
         self.i(f"Response prepared in {self.time_preparing_response:.2f} s")
+        
+        if self.time_preparing_response >= 0:
+            own_time = (self.get_search_time() + self.time_preparing_response
+                        - sum(self.time_waiting_network)
+                        - self.time_waiting_cached_author
+                        - self.time_waiting_cached_doc
+                        - self.time_storing_to_cache)
+        self.i(f"Total compute time: {own_time:.2f} s")
     
     def update_progress_cache(self, force=False):
         now = time.time()

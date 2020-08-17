@@ -45,6 +45,7 @@ metrics = [
     ("duration_ads", ("cumulative", "distribution"), "seconds querying ADS"),
     ("duration_cache_authors", ("cumulative", "distribution"), "seconds loading cached author records"),
     ("duration_cache_docs", ("cumulative", "distribution"), "seconds loading cached document records"),
+    ("duration_compute", ("cumulative", "distribution"), "seconds processing"),
     ("duration_response", ("cumulative", "distribution"), "seconds prepping response"),
     ("duration_search", ("cumulative", "distribution"), "seconds searching for paths"),
     ("duration_total", ("cumulative", "distribution"), "total backend runtime (seconds)"),
