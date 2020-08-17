@@ -93,7 +93,8 @@ def load_documents(keys: []):
     docs = [doc.to_dict() for doc in docs]
     for data in docs:
         try:
-            del data['shard']
+            if data is not None:
+                del data['shard']
         except KeyError:
             pass
     return docs
