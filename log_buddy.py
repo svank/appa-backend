@@ -165,7 +165,7 @@ class LogBuddy:
                         - self.time_waiting_cached_author
                         - self.time_waiting_cached_doc
                         - self.time_storing_to_cache)
-        self.i(f"Total compute time: {own_time:.2f} s")
+            self.i(f"Total compute time: {own_time:.2f} s")
     
     def update_progress_cache(self, force=False):
         now = time.time()
