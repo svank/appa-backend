@@ -19,6 +19,7 @@ from google.cloud.monitoring_v3.types import MetricDescriptor
 from matplotlib.ticker import ScalarFormatter
 from stats_config import PROJECT_NAME, SUBSCRIPTION_NAME, TOPIC, PUBSUB_WAIT
 from stats_config import STATS_BUCKET_NAME, PLOTS_BUCKET_NAME, EARLIEST_DATE
+from stats_config import STATS_FILE_NAME
 
 metrics_client = monitoring_v3.MetricServiceClient()
 storage_client = storage.Client()
@@ -249,7 +250,7 @@ def update_stats(request):
     cur_hour = cur_hour.replace(minute=0, second=0, microsecond=0)
     cur_hour = cur_hour.timestamp()
     
-    blob = bucket.blob("latest")
+    blob = bucket.blob(STATS_FILE_NAME)
     if blob.exists():
         # Grab the existing data
         data = json.loads(blob.download_as_string())
@@ -322,6 +323,7 @@ def update_stats(request):
         
         # Save the new data file
         print("Saving data")
+        blob = bucket.blob(STATS_FILE_NAME)
         blob.upload_from_string(json.dumps(data))
     
         if (datetime.fromtimestamp(cumulative['timestamp'][-1], timezone).month

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 STATS_BUCKET_NAME = "Storage bucket for stats data"
 PLOTS_BUCKET_NAME = "Storage bucket for plots"
+STATS_FILE_NAME = "latest"
 
 PROJECT_NAME = "GCP project name"
 
