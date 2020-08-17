@@ -35,6 +35,7 @@ def find_route(request, load_cached_result=True):
         pf = PathFinder(source, dest, exclude)
         pf.find_path()
         data = to_json(pf)
+        cache_buddy.cache_result(data, result_cache_key)
     except PathFinderError as e:
         data = json.dumps({
             "error_key": e.key,
@@ -67,8 +68,6 @@ def find_route(request, load_cached_result=True):
             "src": source,
             "dest": dest
         })
-    else:
-        cache_buddy.cache_result(data, result_cache_key)
     
     lb.log_stats()
     lb.reset_stats()
