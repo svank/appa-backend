@@ -12,7 +12,7 @@ sys.path.append('..')
 
 # Ensure cache_fs directories aren't generated
 import local_config
-local_config.backing_cache = "cache_firestore"
+local_config.backing_cache = "cache_gcp"
 
 from cache_buddy import CacheMiss
 import cache_gcp
