@@ -31,11 +31,14 @@ class Repository:
                 cache_buddy.cache_documents(documents)
                 if type(author_record) == AuthorRecord:
                     self._fill_in_coauthors(author_record)
-                    cache_buddy.cache_author(author_record)
+                    if len(author_record.documents):
+                        cache_buddy.cache_author(author_record)
                 else:
                     for rec in author_record.values():
                         self._fill_in_coauthors(rec)
-                    cache_buddy.cache_authors(author_record.values())
+                    cache_buddy.cache_authors(
+                        [ar for ar in author_record.values()
+                            if len(ar.documents)])
                     author_record = author_record[author]
         lb.on_author_queried()
         lb.on_doc_queried(len(author_record.documents))
@@ -49,7 +52,8 @@ class Repository:
                 self.ads_buddy.get_papers_for_orcid_id(orcid_id)
             cache_buddy.cache_documents(documents)
             self._fill_in_coauthors(author_record)
-            cache_buddy.cache_author(author_record, cache_key=orcid_id)
+            if len(author_record.documents):
+                cache_buddy.cache_author(author_record, cache_key=orcid_id)
         lb.on_author_queried()
         lb.on_doc_queried(len(author_record.documents))
         return author_record
