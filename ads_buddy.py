@@ -16,6 +16,10 @@ FIELDS = ['bibcode', 'title', 'author', 'aff', 'doctype',
           'keyword', 'pub', 'date', 'citation_count', 'read_count',
           'orcid_pub', 'orcid_user', 'orcid_other']
 
+_allowed_doctypes = ['article', 'eprint', 'inbook', 'book', 'software']
+FILTERS = [' OR '.join('doctype:'+dt for dt in _allowed_doctypes),
+           "database:astronomy"]
+
 # These params control how many authors from the prefetch queue are included
 # in each query. Note that the estimated number of papers per author must
 # be high to accommodate outliers with many papers---it's more of a control
@@ -162,7 +166,7 @@ class ADS_Buddy:
     
     def _inner_query_for_author(self, query, n_authors):
         params = {"q": query,
-                  "fq": ["doctype:article", "database:astronomy"],
+                  "fq": FILTERS,
                   "start": 0,
                   "rows": 2000,
                   "fl": ",".join(FIELDS),
