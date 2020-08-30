@@ -61,7 +61,7 @@ class ADSName:
     """
     __slots__ = ['_last_name', '_given_names', '_require_exact',
                  '_require_less_specific', '_require_more_specific',
-                 '_allow_same_specific', '_original_name', '_full_name',
+                 '_allow_same_specific', '_original_name',
                  '_qualified_full_name', '_equality_cache', '_synonym',
                  '_allow_synonym']
     _last_name: str
@@ -74,7 +74,6 @@ class ADSName:
     _allow_synonym: bool
     
     _original_name: str
-    _full_name: str
     _qualified_full_name: str
     _synonym: ADSName
     
