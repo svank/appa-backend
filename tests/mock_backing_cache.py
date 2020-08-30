@@ -271,7 +271,8 @@ def load_author(key):
             idx = len(docs) - 1
             appears_as[matched].append(idx)
             for coauthor in document['authors']:
-                coauthors[coauthor].append(idx)
+                if coauthor != matched:
+                    coauthors[coauthor].append(idx)
     if len(docs) or key.endswith("nodocs"):
         for coauthor, coauthor_dat in coauthors.items():
             coauthors[coauthor] = ','.join(str(i) for i in coauthor_dat)

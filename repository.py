@@ -92,9 +92,10 @@ class Repository:
         appears_as = defaultdict(set)
         for document in cache_buddy.load_documents(author_record.documents):
             for coauthor in document.authors:
-                coauthors[coauthor].add(document.bibcode)
                 if coauthor == author_record.name:
                     appears_as[coauthor].add(document.bibcode)
+                else:
+                    coauthors[coauthor].add(document.bibcode)
         
         # defaultdict doesn't play nicely with dataclasses' asdict(),
         # so convert to normal dicts. Also convert sets to (sorted) lists
