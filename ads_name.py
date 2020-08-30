@@ -264,12 +264,13 @@ class ADSName:
                 else:
                     equal = True
         
-        if not equal and self._synonym is not None:
-            # Inside self._synonym.__eq__, `self._synonym == other._synonym`
-            # will be checked.
-            equal = self._synonym == other
-        if not equal and other._synonym is not None:
-            equal = other._synonym == self
+        if self._allow_synonym and other._allow_synonym:
+            if not equal and self._synonym is not None:
+                # Inside self._synonym.__eq__,
+                # `self._synonym == other._synonym` will be checked.
+                equal = self._synonym == other
+            if not equal and other._synonym is not None:
+                equal = other._synonym == self
             
         self._equality_cache[other.qualified_full_name] = equal
         other._equality_cache[self.qualified_full_name] = equal

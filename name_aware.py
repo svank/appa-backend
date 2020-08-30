@@ -43,6 +43,8 @@ class NameAwareDict:
             if (key.synonym is not None
                     and key.synonym.last_name != key.last_name):
                 container = self.__getitem__(key.synonym, True)
+                if container.name != key:
+                    raise KeyError(key)
             else:
                 raise KeyError(key)
         

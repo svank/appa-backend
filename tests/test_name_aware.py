@@ -256,6 +256,58 @@ class TestNameAwareDict(TestCase):
             for name in names:
                 self.assertNotIn(name, nad_rev2)
         
+        # Verify functionality with '@' modifier
+        for synonym in synonyms:
+            names_orig = synonym.split(';')
+            
+            for names in [names_orig, list(reversed(names_orig))]:
+                # We'll insert under one name, then verify we can't access
+                # or delete under the other
+                nad1 = NameAwareDict()
+                nad2 = NameAwareDict()
+                nad3 = NameAwareDict()
+                nad4 = NameAwareDict()
+                
+                nad1[names[0]] = 1
+                nad2[names[-1]] = 1
+                nad3['@' + names[0]] = 1
+                nad4['@' + names[-1]] = 1
+                
+                with self.assertRaises(KeyError):
+                    nad1['@' + names[-1]]
+                with self.assertRaises(KeyError):
+                    nad2['@' + names[0]]
+                with self.assertRaises(KeyError):
+                    nad3[names[-1]]
+                with self.assertRaises(KeyError):
+                    nad4[names[0]]
+                
+                # I don't think it's worth it to test modification because
+                # it's hard to define how it should work. If we store under
+                # 'name' which has 'name2' as a synonym, we get the same
+                # value for 'name' and 'name2'. If we then store under
+                # '@name2', what should we get when retrieving as 'name2'?
+                # If we then store again under 'name', what should we get
+                # for 'name2'? Or for '@name2'?
+                
+                # nad1['@' + names[-1]] = 2
+                # self.assertEqual(nad1[names[0]], 1)
+                # nad1['@' + names[0]] = 2
+                # self.assertEqual(nad1[names[-1]], 1)
+                # nad1[names[-1]] = 2
+                # self.assertEqual('@' + nad1[names[0]], 1)
+                # nad1[names[0]] = 2
+                # self.assertEqual('@' + nad1[names[-1]], 1)
+                
+                with self.assertRaises(KeyError):
+                    del nad1['@' + names[-1]]
+                with self.assertRaises(KeyError):
+                    del nad2['@' + names[0]]
+                with self.assertRaises(KeyError):
+                    del nad3[names[-1]]
+                with self.assertRaises(KeyError):
+                    del nad4[names[0]]
+        
         # Remove our test synonyms
         ads_name._name_cache.clear()
         ads_name._name_synonyms.clear()
