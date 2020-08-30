@@ -367,6 +367,8 @@ class TestADSName(TestCase):
         for syn in synonyms:
             names = syn.split(';')
             self.assertEqual(ADSName.parse(names[0]), ADSName.parse(names[1]))
+            self.assertNotEqual('@' + ADSName.parse(names[0]),
+                                '@' + ADSName.parse(names[1]))
             for other_synonyms in synonyms:
                 if other_synonyms != syn:
                     other_names = other_synonyms.split(';')

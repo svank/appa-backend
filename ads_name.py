@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import re
 import string
 from typing import Tuple
@@ -61,7 +62,8 @@ class ADSName:
     __slots__ = ['_last_name', '_given_names', '_require_exact',
                  '_require_less_specific', '_require_more_specific',
                  '_allow_same_specific', '_original_name', '_full_name',
-                 '_qualified_full_name', '_equality_cache', '_synonym']
+                 '_qualified_full_name', '_equality_cache', '_synonym',
+                 '_allow_synonym']
     _last_name: str
     _given_names: Tuple[str]
     
@@ -69,6 +71,7 @@ class ADSName:
     _require_less_specific: bool
     _require_more_specific: bool
     _allow_same_specific: bool
+    _allow_synonym: bool
     
     _original_name: str
     _full_name: str
@@ -152,36 +155,48 @@ class ADSName:
         self._last_name = self._last_name.strip()
         self._given_names = tuple(n.strip() for n in self._given_names)
         
-        if len(self._last_name) and self._last_name[0] in '<>=':
+        if len(self._last_name) and self._last_name[0] in '<>=@':
             if self._last_name[0:2] in (">=", "=>"):
                 self._require_more_specific = True
                 self._allow_same_specific = True
                 self._require_less_specific = False
                 self._require_exact = False
+                self._allow_synonym = True
             
             elif self._last_name[0:2] in ("<=", "=<"):
                 self._require_more_specific = False
                 self._allow_same_specific = True
                 self._require_less_specific = True
                 self._require_exact = False
+                self._allow_synonym = True
             
             elif self._last_name[0] == ">":
                 self._require_more_specific = True
                 self._allow_same_specific = False
                 self._require_less_specific = False
                 self._require_exact = False
+                self._allow_synonym = True
             
             elif self._last_name[0] == "<":
                 self._require_more_specific = False
                 self._allow_same_specific = False
                 self._require_less_specific = True
                 self._require_exact = False
+                self._allow_synonym = True
             
             elif self._last_name[0] == "=":
                 self._require_more_specific = False
                 self._allow_same_specific = False
                 self._require_less_specific = False
                 self._require_exact = True
+                self._allow_synonym = True
+            
+            elif self._last_name[0] == "@":
+                self._require_more_specific = False
+                self._allow_same_specific = True
+                self._require_less_specific = False
+                self._require_exact = False
+                self._allow_synonym = False
             else:
                 raise InvalidName("Unexpected modifiers")
         else:
@@ -189,6 +204,7 @@ class ADSName:
             self._allow_same_specific = True
             self._require_less_specific = False
             self._require_exact = False
+            self._allow_synonym = True
         
         # Remove any non-letter characters
         if not preserve:
@@ -201,7 +217,7 @@ class ADSName:
         if self.last_name == '':
             raise InvalidName("Computed last name is empty")
         
-        if not preserve:
+        if not preserve and self._allow_synonym:
             try:
                 self._synonym = _name_synonyms[self]
             except KeyError:
@@ -393,6 +409,10 @@ class ADSName:
         return self._allow_same_specific
     
     @property
+    def allow_synonym(self):
+        return self._allow_synonym
+    
+    @property
     def excludes_self(self):
         return ((self._require_less_specific or self._require_more_specific)
                 and not self._allow_same_specific)
@@ -414,7 +434,7 @@ class ADSName:
         return self._strip_modifiers(self.qualified_full_name)
     
     def _strip_modifiers(self, name):
-        while len(name) > 0 and name[0] in ('=', '<', '>'):
+        while len(name) > 0 and name[0] in ('=', '<', '>', '@'):
             name = name[1:]
         return name
     
@@ -459,24 +479,24 @@ class ADSName:
                 modifiers = '>'
         elif self._require_exact:
             modifiers = '='
+        elif not self._allow_synonym:
+            modifiers = '@'
         return modifiers
     
     def has_modifiers(self):
         return (self._require_exact
                 or self._require_less_specific
-                or self._require_more_specific)
+                or self._require_more_specific
+                or not self._allow_synonym)
 
 
 def _parse_name_synonyms(synonym_list):
-    if len(_name_cache):
-        raise RuntimeError(
-            "Name synonyms must not be added after names are parsed")
     for synonym in synonym_list:
         synonym.strip()
         if len(synonym) == 0 or synonym[0] == '#' or ';' not in synonym:
             continue
         names = synonym.split(";")
-        names = [ADSName.parse(name.strip()) for name in names]
+        names = [ADSName.parse('@' + name.strip()) for name in names]
         
         # We need to choose one variant to be canonical. Let's choose one with
         # the highest level of detail. As tie-breakers, choose variants with
@@ -491,18 +511,17 @@ def _parse_name_synonyms(synonym_list):
                     for name in names]
         intermed.sort(reverse=True)
         canonical = intermed[0][-1]
+        canonical = canonical.without_modifiers()
         variants = [i[-1] for i in intermed[1:]]
         # Our variants are sorted with the most detailed forms first. Our
         # NameAwareDict will end up with the less-detailed forms as keys.
         for variant in variants:
             _name_synonyms[variant] = canonical
-            # Just in case any equality checking happens during the sort
-            canonical._equality_cache = {}
-            variant._equality_cache = {}
-    # The process of parsing these synonyms has populated the name cache
-    # with instances that are now invalid (because they don't have synonyms
-    # set). Purge them.
-    _name_cache.clear()
+    # Names in _name_synonyms now have invalid equality caches.
+    keys = _name_synonyms.keys()
+    values = _name_synonyms.values()
+    for name in itertools.chain(keys, values):
+        name._equality_cache.clear()
 
 
 def _load_synonyms():
