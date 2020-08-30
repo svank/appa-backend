@@ -245,7 +245,7 @@ def _score_author_chain(chain, repo, pairings):
 def _score_author_chain_link(con1, con2, repo):
     """Scores the reliability of name matching between two papers
 
-    Accepts two "connections", tupes containing a bibcode followed by two
+    Accepts two "connections", tuples containing a bibcode followed by two
     indices locating an author in the author list of the associated bibccode.
     The author in question will be indicated by the latter index in the first
     connection and the earlier index in the second connection.
