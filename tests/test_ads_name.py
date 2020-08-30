@@ -164,7 +164,7 @@ class TestADSName(TestCase):
                              (req_less or req_more) and not allow_same)
             self.assertEqual(name.has_modifiers(), mod != '')
             self.assertEqual(name.modifiers, mod)
-            self.assertEqual(name.without_modifiers.full_name, namesA[1])
+            self.assertEqual(name.without_modifiers().full_name, namesA[1])
     
     def test_repr(self):
         """Test than string representations of ADSNames are as expected"""

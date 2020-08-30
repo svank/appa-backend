@@ -435,7 +435,6 @@ class ADSName:
                     
         return self._qualified_full_name
     
-    @property
     def without_modifiers(self):
         if self.has_modifiers():
             return ADSName.parse(self.full_name)
