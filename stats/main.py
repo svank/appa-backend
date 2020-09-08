@@ -151,7 +151,7 @@ def get_updated_cache_count(n_author, n_document):
             break
     
     if len(messages) == 0:
-        return n_author, n_document
+        return n_author, n_document, []
     
     # Put messages in order by publication time
     messages = sorted(messages, key=lambda m: m[0])
@@ -161,8 +161,8 @@ def get_updated_cache_count(n_author, n_document):
     # should be de-duped, but create-delete-create is OK)
     author_changes = defaultdict(lambda: (0, 0))
     doc_changes = defaultdict(lambda: (0, 0))
-    future = None
-    for _, msg in messages:
+    consumed_ack_ids = []
+    for (_, msg), ack_id in zip(messages, ack_ids):
         record = (author_changes if msg.attributes['type'] == "author"
                   else doc_changes)
         delta = 1 if msg.attributes['action'] == "create" else -1
@@ -172,17 +172,14 @@ def get_updated_cache_count(n_author, n_document):
             # This appears to be a duplicate message
             pass
         else:
-            # If it's too recent of a message, re-add it to the Pub/Sub queue.
-            # Record the sense of the change for de-duping, but don't let it
-            # affect the count
+            # If it's too recent of a message, record the sense of the change
+            # for de-duping, but don't let it affect the count. Otherwise,
+            # count it and add it to the list of message IDs to acknowledge
             if now - msg.publish_time.seconds < PUBSUB_WAIT:
                 record[key] = (state, delta)
-                future = publisher.publish(topic_path,
-                                           data=msg.data,
-                                           type=msg.attributes['type'],
-                                           action=msg.attributes['action'])
             else:
                 record[key] = (state + delta, delta)
+                consumed_ack_ids.append(ack_id)
     
     # Boil down the change list to a number
     delta_author = [state for state, _ in author_changes.values()]
@@ -190,18 +187,16 @@ def get_updated_cache_count(n_author, n_document):
     n_author += sum(delta_author)
     n_document += sum(delta_doc)
     
-    # Ensure we wait until the last message is published
-    if future is not None:
-        future.result()
-    
+    return n_author, n_document, consumed_ack_ids
+
+
+def send_pub_sub_acks(ack_ids):
     # We can't ack too many messages at once
     CHUNK_SIZE = 500
-    reqs = (ack_ids[i:i+CHUNK_SIZE]
+    reqs = (ack_ids[i:i + CHUNK_SIZE]
             for i in range(0, len(ack_ids), CHUNK_SIZE))
     for req in reqs:
         subscriber.acknowledge(subscription_path, req)
-    
-    return n_author, n_document
 
 
 def x_axis_dates(ax=None, fig=None):
@@ -317,7 +312,9 @@ def update_stats(request):
         data['cache_size']['documents'].extend(
             [n_docs] * (n_collected_timestamps - 1))
         
-        n_authors, n_docs = get_updated_cache_count(n_authors, n_docs)
+        # Use Pub/Sub queue to update count of documents/authors in cache
+        n_authors, n_docs, ack_ids = get_updated_cache_count(
+            n_authors, n_docs)
         data['cache_size']['authors'].append(n_authors)
         data['cache_size']['documents'].append(n_docs)
         
@@ -325,7 +322,11 @@ def update_stats(request):
         print("Saving data")
         blob = bucket.blob(STATS_FILE_NAME)
         blob.upload_from_string(json.dumps(data))
-    
+        
+        # Now that the updated cache counts have been committed, clear
+        # the messages from the Pub/Sub queue
+        send_pub_sub_acks(ack_ids)
+        
         if (datetime.fromtimestamp(cumulative['timestamp'][-1], timezone).month
                 !=
                 datetime.fromtimestamp(cumulative['timestamp'][-2], timezone).month):
