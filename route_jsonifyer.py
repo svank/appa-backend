@@ -54,8 +54,8 @@ def to_json(path_finder: PathFinder):
     src_name = path_finder.orig_src
     dest_name = path_finder.orig_dest
     
-    used_src_names = list({chain[0] for chain in chains})
-    used_dest_names = list({chain[-1] for chain in chains})
+    used_src_names = [chain[0] for chain in chains]
+    used_dest_names = [chain[-1] for chain in chains]
     
     src_display_name = get_name_as_in_ADS(src_name, used_src_names)
     dest_display_name = get_name_as_in_ADS(dest_name, used_dest_names)
@@ -100,6 +100,9 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
     most-detailed forms. If it contains more given names than the target
     names, truncates the list. Shortens given names to initials if the target
     name has an initial at that position."""
+    # Unique-ify names_in_result
+    names_in_result = list(set(names_in_result))
+    
     repo = Repository(can_skip_refresh=True)
     names_in_result = [ADSName.parse(name) for name in names_in_result]
     orcid = is_orcid_id(target_name)
@@ -143,16 +146,25 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
     return final_name.full_name
 
 
-def canonicalize_graph_data(chains):
+def canonicalize_graph_data(chains, source, dest):
     # We have a list of chains---the table in the web view. These chains
     # may contain many different forms of a name, and it's important to
     # preserve that for the table display. But for the graph display, it's
     # better to collapse down to one node per person, not one node per
     # name form. So within each column, we want to canonicalize each name
     # to the least-detailed form of that name appearing in the column.
+    source = get_name_as_in_ADS(source, [c[0] for c in chains])
+    dest = get_name_as_in_ADS(dest, [c[-1] for c in chains])
+    source = ADSName.parse(source)
+    dest = ADSName.parse(dest)
+    
     for i in range(len(chains[0])):
         # This dict will map names to canonical forms
         nad = NameAwareDict()
+        if i == 0:
+            nad[source] = source
+        if i == len(chains[0]) - 1:
+            nad[dest] = dest
         for chain in chains:
             name = ADSName.parse(chain[i])
             if name in nad:

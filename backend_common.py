@@ -94,7 +94,7 @@ def get_graph_data(request):
         data = cache_buddy.load_result(result_cache_key)
         data = json.loads(data)
         chains = data['chains']
-        chains = canonicalize_graph_data(chains)
+        chains = canonicalize_graph_data(chains, source, dest)
         data = {'graphData': chains}
     else:
         data = {"error": "data not found"}
