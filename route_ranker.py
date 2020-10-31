@@ -84,6 +84,7 @@ def _insert_document_data(pairings, doc_data, repo, excluded_names):
                     lb.on_doc_loaded()
                     del doc_record['bibcode']
                     del doc_record['timestamp']
+                    del doc_record['doctype']
                     doc_data[bibcode] = doc_record
                 
                 auth_1_idx, auth_2_idx = _find_indices(
