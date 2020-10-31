@@ -72,6 +72,7 @@ def to_json(path_finder: PathFinder):
         'doc_data': doc_data,
         'chains': chains,
         'paper_choices_for_chain': paper_choices_for_chain,
+        'graph_translation': graph_translation(chains, src_name, dest_name),
         'stats': {
             'n_docs_queried': lb.n_docs_queried,
             'n_authors_queried': lb.n_authors_queried,
@@ -146,7 +147,7 @@ def get_name_as_in_ADS(target_name, names_in_result: []):
     return final_name.full_name
 
 
-def canonicalize_graph_data(chains, source, dest):
+def graph_translation(chains, source, dest):
     # We have a list of chains---the table in the web view. These chains
     # may contain many different forms of a name, and it's important to
     # preserve that for the table display. But for the graph display, it's
@@ -158,9 +159,11 @@ def canonicalize_graph_data(chains, source, dest):
     source = ADSName.parse(source)
     dest = ADSName.parse(dest)
     
+    nads = []
     for i in range(len(chains[0])):
         # This dict will map names to canonical forms
         nad = NameAwareDict()
+        nads.append(nad)
         if i == 0:
             nad[source] = source
         if i == len(chains[0]) - 1:
@@ -172,7 +175,12 @@ def canonicalize_graph_data(chains, source, dest):
                     nad[name] = name
             else:
                 nad[name] = name
+    
+    mappings = []
+    for i, nad in enumerate(nads):
+        mapping = {}
+        mappings.append(mapping)
         for chain in chains:
-            name = chain[i]
-            chain[i] = nad[name].original_name
-    return chains
+            name = chain[i].lower()
+            mapping[name] = nad[name].original_name
+    return mappings
