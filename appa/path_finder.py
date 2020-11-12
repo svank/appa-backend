@@ -2,12 +2,12 @@ from collections import deque
 from typing import List, Set
 
 from ads_buddy import is_bibcode, is_orcid_id, normalize_orcid_id
-from ads_name import ADSName, InvalidName
-from author_record import AuthorRecord
-from cache_buddy import key_is_valid
+from cache.cache_buddy import key_is_valid
 from log_buddy import lb
-from name_aware import NameAwareDict, NameAwareSet
+from names.ads_name import ADSName, InvalidName
+from names.name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
+from records.author_record import AuthorRecord
 from repository import Repository
 
 

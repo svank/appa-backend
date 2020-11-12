@@ -3,7 +3,8 @@ import json
 import os
 import time
 
-import cache_buddy
+from cache import cache_buddy
+
 import local_config
 
 DOC_CACHE_SUBDIR = os.path.join(local_config.cache_fs_dir, "documents")

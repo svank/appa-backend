@@ -2,7 +2,7 @@ import dataclasses
 import time
 from typing import Dict, List
 
-from ads_name import ADSName
+from names.ads_name import ADSName
 
 
 @dataclasses.dataclass()
@@ -21,7 +21,7 @@ class AuthorRecord:
     
     def load_documents(self):
         """Replaces the bibcodes in self.documents with full DocumentRecords"""
-        import cache_buddy
+        from cache import cache_buddy
         self.documents = cache_buddy.load_documents(self.documents)
     
     def copy(self):

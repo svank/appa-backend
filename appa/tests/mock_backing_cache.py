@@ -10,9 +10,9 @@ from itertools import zip_longest
 from unittest.mock import MagicMock
 
 import path_finder
-from ads_name import ADSName
-from cache_buddy import CacheMiss, AUTHOR_VERSION_NUMBER, \
+from cache.cache_buddy import CacheMiss, AUTHOR_VERSION_NUMBER, \
     DOCUMENT_VERSION_NUMBER
+from names.ads_name import ADSName
 
 # Monkey-patch path_finder to recognize our bibcodes and ORCID IDs
 path_finder.is_bibcode = lambda x: x.startswith("paper")

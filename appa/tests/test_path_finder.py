@@ -1,8 +1,9 @@
 from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
+from cache import cache_buddy
+
 import ads_buddy
-import cache_buddy
 import path_finder
 import tests.mock_backing_cache as mock_backing_cache
 from log_buddy import lb

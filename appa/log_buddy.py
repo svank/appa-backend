@@ -2,9 +2,10 @@ import logging
 import time
 from statistics import median
 
-import cache_buddy
+from cache import cache_buddy
+
 from local_config import logging_handler, log_error_extra, log_exception_extra
-from progress_record import ProgressRecord
+from records.progress_record import ProgressRecord
 
 
 # noinspection PyUnresolvedReferences

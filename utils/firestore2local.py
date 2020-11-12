@@ -8,14 +8,14 @@
 import json
 import sys
 
-sys.path.append('..')
+sys.path.append('../appa')
 
 # Ensure cache_fs directories aren't generated
 import local_config
 local_config.backing_cache = "cache_gcp"
 
-from cache_buddy import CacheMiss
-import cache_gcp
+from cache.cache_buddy import CacheMiss
+from cache import cache_gcp
 
 try:
     if sys.argv[1] == 'author':

@@ -1,17 +1,21 @@
 import hashlib
-import importlib
 import time
 import traceback
 
 import local_config
 # Can't use `from log_buddy import lb` b/c it would be a circular import
 import log_buddy
-from ads_name import ADSName
-from author_record import AuthorRecord
-from document_record import DocumentRecord
-from progress_record import ProgressRecord
+from names.ads_name import ADSName
+from records.author_record import AuthorRecord
+from records.document_record import DocumentRecord
+from records.progress_record import ProgressRecord
 
-backing_cache = importlib.import_module(local_config.backing_cache)
+if local_config.backing_cache == "cache_fs":
+    from . import cache_fs as backing_cache
+elif local_config.backing_cache == "cache_gcp":
+    from . import cache_gcp as backing_cache
+else:
+    raise ValueError("Invalid backing cache selection")
 
 # Records older than this will not be loaded
 MAXIMUM_AGE = 31 * 24 * 60 * 60  # 1 month in seconds

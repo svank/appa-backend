@@ -4,8 +4,9 @@ Entry points for Cloud Functions. For local usage, see appa.py
 
 import json
 
+from cache import cache_buddy
+
 import backend_common
-import cache_buddy
 from log_buddy import lb
 
 # Cloud Function responses cannot be larger than 10 MiB. If our response

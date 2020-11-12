@@ -1,9 +1,9 @@
 import time
 
+from cache import cache_buddy
 from flask import Flask, request
 
 import backend_common
-import cache_buddy
 from log_buddy import lb
 
 app = Flask(__name__)

@@ -3,8 +3,8 @@ import itertools
 import string
 from collections import defaultdict
 
-from ads_name import ADSName
 from log_buddy import lb
+from names.ads_name import ADSName
 from path_finder import PathFinder
 from path_node import PathNode
 from repository import Repository

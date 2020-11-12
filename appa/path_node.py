@@ -5,7 +5,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import Set, DefaultDict
 
-from ads_name import ADSName
+from names.ads_name import ADSName
 
 
 @dataclass()

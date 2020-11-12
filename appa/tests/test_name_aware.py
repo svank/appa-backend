@@ -1,8 +1,8 @@
 from unittest import TestCase
 
-import ads_name
-from ads_name import ADSName
-from name_aware import NameAwareDict, NameAwareSet
+import names.ads_name as ads_name
+from names.ads_name import ADSName
+from names.name_aware import NameAwareDict, NameAwareSet
 from path_node import PathNode
 
 equal_names_str = ["Murray, S.",

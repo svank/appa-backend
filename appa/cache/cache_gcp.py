@@ -4,9 +4,9 @@ import time
 import zlib
 
 import requests
+from cache import cache_buddy
 from google.cloud import exceptions, firestore, storage
 
-import cache_buddy
 import local_config
 
 DOC_CACHE_COLLECTION = "documents"

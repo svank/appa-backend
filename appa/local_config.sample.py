@@ -1,7 +1,9 @@
 import os
 # The module whose name is in this string will be imported and used
+# as the cache back-end
 backing_cache = "cache_fs"
-cache_fs_dir = "cache"
+# When using the cache_fs backend, this path will be used for the cache
+cache_fs_dir = "../cache"
 
 # For running in GCP:
 # backing_cache = "cache_gcp"
@@ -15,8 +17,11 @@ ADS_TOKEN = "token_here"
 # one set of names that should all be treated as equal, separated by
 # semicolons (e.g. "van kooten, s; vankooten, s"). Lines beginning with # are
 # ignored.
+
+path_to_synonyms = "../name_synonyms"
+
 directory = os.path.dirname(os.path.realpath(__file__))
-name_synonym_dir = os.path.join(directory, "name_synonyms")
+name_synonym_dir = os.path.join(directory, path_to_synonyms)
 if os.path.exists(name_synonym_dir):
     name_synonym_lists = os.listdir(name_synonym_dir)
     name_synonym_lists = [os.path.join(name_synonym_dir, f)

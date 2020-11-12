@@ -1,7 +1,7 @@
 from unittest import TestCase
 
-import ads_name
-from ads_name import ADSName, InvalidName
+import names.ads_name as ads_name
+from names.ads_name import ADSName, InvalidName
 
 namesA = [
     "murray",

@@ -1,13 +1,14 @@
 from collections import defaultdict
 from typing import Union
 
-import cache_buddy
+from cache import cache_buddy
+
 from ads_buddy import ADS_Buddy
-from ads_name import ADSName
-from author_record import AuthorRecord
-from cache_buddy import CacheMiss
-from document_record import DocumentRecord
+from cache.cache_buddy import CacheMiss
 from log_buddy import lb
+from names.ads_name import ADSName
+from records.author_record import AuthorRecord
+from records.document_record import DocumentRecord
 
 Name = Union[str, ADSName]
 

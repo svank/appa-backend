@@ -1,8 +1,9 @@
 from unittest import TestCase
 from unittest.mock import patch, MagicMock
 
+from cache import cache_buddy
+
 import ads_buddy
-import cache_buddy
 import path_finder
 import route_ranker
 from repository import Repository

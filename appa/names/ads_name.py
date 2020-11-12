@@ -8,7 +8,7 @@ from typing import Tuple
 from unidecode import unidecode_expect_ascii as unidecode
 
 import local_config
-import name_aware
+from . import name_aware
 
 _name_cache = {}
 # Translation table to remove all characters that aren't lower-case ascii

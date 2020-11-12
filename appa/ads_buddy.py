@@ -5,12 +5,12 @@ from html import unescape
 
 import requests
 
-from ads_name import ADSName, InvalidName
-from author_record import AuthorRecord
-from document_record import DocumentRecord
 from local_config import ADS_TOKEN
 from log_buddy import lb
-from name_aware import NameAwareDict
+from names.ads_name import ADSName, InvalidName
+from names.name_aware import NameAwareDict
+from records.author_record import AuthorRecord
+from records.document_record import DocumentRecord
 
 FIELDS = ['bibcode', 'title', 'author', 'aff', 'doctype',
           'keyword', 'pub', 'date', 'citation_count', 'read_count',

@@ -7,9 +7,9 @@ import time
 
 import route_ranker
 from ads_buddy import is_orcid_id
-from ads_name import ADSName
 from log_buddy import lb
-from name_aware import NameAwareDict
+from names.ads_name import ADSName
+from names.name_aware import NameAwareDict
 from path_finder import PathFinder
 from repository import Repository
 

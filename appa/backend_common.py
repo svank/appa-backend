@@ -1,6 +1,7 @@
 import json
 
-import cache_buddy
+from cache import cache_buddy
+
 from ads_buddy import ADSError, ADSRateLimitError
 from log_buddy import lb
 from path_finder import PathFinder, PathFinderError
