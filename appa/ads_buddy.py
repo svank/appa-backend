@@ -187,11 +187,15 @@ class ADS_Buddy:
         if t_elapsed > 2 * n_authors:
             lb.w(f"Long ADS query: {t_elapsed:.2f} s for {params['q']}")
         
-        if int(r.headers.get('X-RateLimit-Remaining', 1)) <= 1:
-            reset = time.strftime(
-                "%Y-%m-%d %H:%M:%S UTC",
-                time.gmtime(int(r.headers.get('X-RateLimit-Reset', 0))))
-            raise ADSRateLimitError(r.headers.get('X-RateLimit-Limit'), reset)
+        if 'X-RateLimit-Remaining' in r.headers:
+            if int(r.headers.get('X-RateLimit-Remaining', 1)) <= 1:
+                reset = time.strftime(
+                    "%Y-%m-%d %H:%M:%S UTC",
+                    time.gmtime(int(r.headers.get('X-RateLimit-Reset', 0))))
+                raise ADSRateLimitError(
+                        r.headers.get('X-RateLimit-Limit'), reset)
+        else:
+            lb.w("ADS query did not return X-RateLimit-Remaining")
         
         r_data = r.json()
         if "error" in r_data:
