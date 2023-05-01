@@ -2,4 +2,4 @@ requests==2.24.0
 Unidecode==1.1.1
 
 # Flask is required only when running as a local web server
-Flask==1.1.2
+Flask==2.3.2
